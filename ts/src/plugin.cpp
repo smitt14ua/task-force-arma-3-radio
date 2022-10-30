@@ -79,7 +79,7 @@ void setGameClientMuteStatus(TSServerID serverConnectionHandlerID, TSClientID cl
         if (clientData && myData && (TFAR::getInstance().m_gameData.alive && clientData->isAlive() || myData->isSpectating)) {
             auto distance = myData->getClientPosition().distanceTo(clientData->getClientPosition());
             mute = distance > (clientData->voiceVolume + 15);
-            
+
             if (mute) {//If he is in range we don't need to check if we can hear him over radio as we can hear anyway.
                 const bool isOnRadio = isOverRadio.first ? isOverRadio.second : !clientData->isOverRadio(myData, false, false).empty();
                 mute = !isOnRadio;
@@ -151,7 +151,7 @@ void ServiceThread() {
                 if (allowedToMove)
                     Teamspeak::moveToSeriousChannel();//#TODO people may want to leave SeriousChannel on purpose and not be moved back
             }
-                
+
             lastCheckForExpire = std::chrono::system_clock::now();
             TFAR::getServerDataDirectory()->verify();
         }
@@ -505,7 +505,8 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
     const bool isNotHearableInNonPureSpectator = clientDataDir->myClientData->isSpectating && ((clientData->isEnemyToPlayer && TFAR::config.get<bool>(Setting::spectatorNotHearEnemies)) || (!clientData->isEnemyToPlayer && !TFAR::config.get<bool>(Setting::spectatorCanHearFriendlies)));
     //Other player is also a spectator. So we always hear him without 3D positioning
     const bool isHearableInPureSpectator = clientDataDir->myClientData->isSpectating && clientData->isSpectating;
-    const bool isHearableInSpectator = isHearableInPureSpectator || !isNotHearableInNonPureSpectator;
+    const bool areBothNotAlive = !alive && !clientData->isAlive();
+    const bool isHearableInSpectator = isHearableInPureSpectator || !isNotHearableInNonPureSpectator || areBothNotAlive;
 
     if (!isHearableInSpectator && isSeriousModeEnabled(serverConnectionHandlerID, clientID) && (!alive || !clientData->isAlive())) {
         sampleBuffer.setToNull();
@@ -628,7 +629,7 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
                     if (info.over == sendingRadioType::LISTEN_TO_SW) {
                         processLog << "sw rd=" << radioDistance << " rn="<< clientData->range;
                         const auto errorLevel = std::min(info.antennaConnection.getLoss(), effectErrorFromDistance(info.over, radioDistance, clientData));
-                        
+
                         processLog << " rl=" << errorLevel;
                         clientData->effects.getSwRadioEffect(info.radio_id)->setErrorLeveL(errorLevel);
 
@@ -984,7 +985,7 @@ void processTangentPress(TSServerID serverId, const std::vector<std::string_view
                 recvLog << "vehicleCheck " << vehicleCheck << "\n";
                 recvLog << "vehicleVolumeLoss " << vehicleVolumeLoss << "\n";
             }
-            
+
 
             if (playPressed && !transmissionCounted) {
                 //#TODO keep an array of client weak pointers of the receiving transmissions.
