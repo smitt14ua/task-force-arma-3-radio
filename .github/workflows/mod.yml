@@ -1,0 +1,114 @@
+name: Mod
+
+on:
+  push:
+    branches:
+      - '**'
+    # Ignored for tag pushes
+    paths:
+      - 'addons/**'
+      - 'extensions/**'
+      - 'include/**'
+      - '.hemtt/**'
+      - 'mod.cpp'
+      - 'meta.cpp'
+      - '*.paa'
+      - '.github/workflows/mod.yml'
+    tags:
+      - '*'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Release + its tag push share github.ref: one run cancelled
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extension:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout the source code
+        uses: actions/checkout@v7
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v3
+      # Project targets v140 / Win 8.1 SDK, absent on runner
+      - name: Build task_force_radio_pipe
+        run: >
+          msbuild extensions/task_force_radio_pipe/task_force_radio_pipe.vcxproj
+          -nologo -m -v:minimal
+          -p:Configuration=Release
+          -p:Platform=x64
+          -p:PlatformToolset=v143
+          -p:WindowsTargetPlatformVersion=10.0
+          -p:OutDir=${{ github.workspace }}\out\
+      - name: Upload the extension
+        uses: actions/upload-artifact@v7
+        with:
+          name: extension
+          path: |
+            out/*.dll
+            out/*.pdb
+          if-no-files-found: error
+
+  mod:
+    needs: extension
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the source code
+        uses: actions/checkout@v7
+      # *.paa, *.p3d in LFS, checkout skips it. extra/, ts/ not in mod
+      - name: List the mod LFS objects
+        id: lfs
+        run: echo "key=lfs-mod-$(git lfs ls-files --long --exclude 'extra/**,ts/**' | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - name: Cache the mod LFS objects
+        uses: actions/cache@v6
+        with:
+          path: .git/lfs/objects
+          key: ${{ steps.lfs.outputs.key }}
+      - name: Fetch the mod LFS objects
+        run: git lfs pull --exclude 'extra/**,ts/**'
+      - name: Download the extension
+        uses: actions/download-artifact@v8
+        with:
+          name: extension
+          path: extension
+      # project.toml packs root *.dll into mod
+      - name: Place the extension into the mod root
+        run: |
+          cp extension/task_force_radio_pipe_x64.dll .
+          mkdir -p symbols && cp extension/*.pdb symbols/
+      - name: Setup HEMTT
+        uses: arma-actions/hemtt@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # Authenticated release download, avoids IP rate limit
+      - name: Run HEMTT release
+        run: hemtt release
+      - name: Upload the mod
+        uses: actions/upload-artifact@v7
+        with:
+          name: tfar-mod-${{ github.sha }}
+          path: .hemttout/release/
+          if-no-files-found: error
+      - name: Upload the extension symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: tfar-extension-symbols-${{ github.sha }}
+          path: symbols/
+      # Tag without release: artifacts only
+      - name: Attach the mod to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" > /dev/null; then
+            echo "::notice::No release for tag $TAG, upload skipped"
+            exit 0
+          fi
+          mkdir -p dist && cp -r .hemttout/release dist/@tfar
+          (cd dist && zip -qr "../tfar-$TAG.zip" @tfar)
+          gh release upload "$TAG" "tfar-$TAG.zip" --clobber
