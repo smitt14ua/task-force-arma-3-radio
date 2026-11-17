@@ -23,8 +23,8 @@ if (isDedicated) exitWith {
     ERROR("This function should never be called on a dedicated Server");
 };
 
-//Only one request at a time. The response carries no request ID, so a second request while one is pending
-//would make the first response be applied with the second request's radios. Give up waiting after 30 seconds.
+//Only one request at a time, a second one would request the same radios again. Give up waiting after 30 seconds,
+//a late response is recognised by its request ID and ignored.
 if (diag_tickTime - (missionNamespace getVariable [QGVAR(radioRequestPendingSince), -1000]) < 30) exitWith {
     if (_this isEqualTo true) then { //Don't lose a request to replace instanced radios, retry once the pending one is done
         [{diag_tickTime - (missionNamespace getVariable [QGVAR(radioRequestPendingSince), -1000]) >= 30}, {true call TFAR_fnc_requestRadios;}] call CBA_fnc_waitUntilAndExecute;
@@ -41,6 +41,9 @@ GVAR(VehicleConfigCacheNamespace) setVariable ["TFAR_fnc_requestRadios_lastExec"
 
 if (_radiosToRequest isEqualTo []) exitWith {};
 
+GVAR(radioRequestId) = (missionNamespace getVariable [QGVAR(radioRequestId), 0]) + 1;
+private _requestId = GVAR(radioRequestId);
+
 //A timed out request may still have its handler registered, it would also handle the next response
 if (!isNil QGVAR(lastRadioRequestEH_ID)) then {
     ["TFAR_RadioRequestResponseEvent", GVAR(lastRadioRequestEH_ID)] call CBA_fnc_removeEventHandler;
@@ -50,13 +53,19 @@ if (!isNil QGVAR(lastRadioRequestEH_ID)) then {
 GVAR(lastRadioRequestEH_ID) = [
     "TFAR_RadioRequestResponseEvent", {
 
-        params [["_response", [], [[]]]];
+        params [["_response", [], [[]]], ["_requestId", -1, [0]]];
 
         //Got a outdated result
         if !(_thisId isEqualTo GVAR(lastRadioRequestEH_ID)) exitWith {
             ["TFAR_RadioRequestResponseEvent", _thisId] call CBA_fnc_removeEventHandler;
             //#TODO this should be handled like an error. If this happens the server will discard unique IDs and we only have a limited number of them
             //I don't really want a garbage collection system like ACRE. TFAR's system is enough if we take some care not to throw away IDs.
+        };
+
+        //Late response to an earlier, timed out request: its radios don't match this request, keep waiting.
+        //-1: server without request IDs
+        if (_requestId != -1 && {_requestId != (_thisArgs select 4)}) exitWith {
+            diag_log ["TFAR_ReceiveRadioRequestResponse outdated", _requestId, _response];
         };
 
         if ((_response isEqualTo []) || {(_response select 0) isEqualTo "ERROR:47"}) exitWith {
@@ -136,7 +145,7 @@ GVAR(lastRadioRequestEH_ID) = [
 
         ["TFAR_RadioRequestResponseEvent", _thisId] call CBA_fnc_removeEventHandler;
         [[15, "radioRequest", round ((diag_tickTime-TFAR_beta_RadioRequestStart)*1000)]] call TFAR_fnc_betaTracker;//#TODO remove on release
-    }, [_radiosToRequest, _linkFirstItem, _settingsToCopy, TFAR_currentUnit]
+    }, [_radiosToRequest, _linkFirstItem, _settingsToCopy, TFAR_currentUnit, _requestId]
 ] call CBA_fnc_addEventHandlerArgs;
 
 [parseText(localize LSTRING(wait_radio)), 10] call TFAR_fnc_showHint;
@@ -145,5 +154,5 @@ TFAR_beta_RadioRequestStart = diag_tickTime;//#TODO remove on release
 //Send request
 diag_log ["TFAR_SendRadioRequest", _radiosToRequest, TF_respawnedAt,time];
 GVAR(radioRequestPendingSince) = diag_tickTime;
-["TFAR_RadioRequestEvent", [_radiosToRequest,TFAR_currentUnit]] call CBA_fnc_serverEvent;
+["TFAR_RadioRequestEvent", [_radiosToRequest, TFAR_currentUnit, _requestId]] call CBA_fnc_serverEvent;
 //MUTEX_UNLOCK(TF_radio_request_mutex);

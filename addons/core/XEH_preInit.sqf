@@ -181,9 +181,16 @@ GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are cu
 
     //Only restart if the changed channel (primary or additional) is the one transmitting
     if ([_radio, _isAdditional] in GVAR(currentTransmittingRadio)) then {
-        //Currently transmitting on that radio, stop transmission on old channel and start new one on new channel
-        private _oldFrequency = [_radio, _oldChannel + 1] call TFAR_fnc_getChannelFrequency;
-        [_radio, _oldChannel, _oldFrequency, _isAdditional] call TFAR_fnc_doSRTransmitEnd;
+        //Currently transmitting on that radio, stop transmission on old channel and start new one on new channel.
+        //A tangent transmission is ended through TFAR_fnc_endTangentTransmission, which keeps the RELEASED
+        //from overtaking a PRESSED sent just before.
+        private _transmission = missionNamespace getVariable [QGVAR(tangentTransmission), []];
+        if ((_transmission select [0, 2]) isEqualTo [0, _radio] && {(_transmission select 4) isEqualTo _isAdditional}) then {
+            [0] call TFAR_fnc_endTangentTransmission;
+        } else {
+            private _oldFrequency = [_radio, _oldChannel + 1] call TFAR_fnc_getChannelFrequency;
+            [_radio, _oldChannel, _oldFrequency, _isAdditional] call TFAR_fnc_doSRTransmitEnd;
+        };
 
         //Additional channel disabled, the additional tangent release can't end the transmission anymore
         if (_newChannel < 0) exitWith {TF_tangent_sw_pressed = false;};
@@ -212,8 +219,14 @@ GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are cu
     //Only restart if the changed channel (primary or additional) is the one transmitting
     if ([_radio, _isAdditional] in GVAR(currentTransmittingRadio)) then {
         //Currently transmitting on that radio, stop transmission on old channel and start new one on new channel
-        private _oldFrequency = [_radio, _oldChannel + 1] call TFAR_fnc_getChannelFrequency;
-        [_radio, _oldChannel, _oldFrequency, _isAdditional] call TFAR_fnc_doLRTransmitEnd;
+        //(a tangent transmission through TFAR_fnc_endTangentTransmission, see the SW handler)
+        private _transmission = missionNamespace getVariable [QGVAR(tangentTransmission), []];
+        if ((_transmission select [0, 2]) isEqualTo [1, _radio] && {(_transmission select 4) isEqualTo _isAdditional}) then {
+            [1] call TFAR_fnc_endTangentTransmission;
+        } else {
+            private _oldFrequency = [_radio, _oldChannel + 1] call TFAR_fnc_getChannelFrequency;
+            [_radio, _oldChannel, _oldFrequency, _isAdditional] call TFAR_fnc_doLRTransmitEnd;
+        };
 
         //Additional channel disabled, the additional tangent release can't end the transmission anymore
         if (_newChannel < 0) exitWith {TF_tangent_lr_pressed = false;};

@@ -25,12 +25,17 @@ if (_radio isEqualTo "") exitWith {nil};
 private _value = TFAR_RadioSettingsNamespace getVariable _radio;
 if (!isNil "_value") exitWith {_value};
 
+private _provisional = false;
 if (isNil QGVAR(saved_active_sr_settings)) then  {
     _value = [true, TFAR_currentUnit, _radio] call DFUNC(getDefaultRadioSettings);
+    _provisional = GVAR(defaultSettingsProvisional);
 } else {
     _value = +GVAR(saved_active_sr_settings);
     GVAR(saved_active_sr_settings) = nil;
 };
+
+//The side's frequencies didn't arrive from the server yet, don't store the provisional settings
+if (_provisional) exitWith {_value};
 
 [_radio, _value, true] call TFAR_fnc_setSwSettings;
 

@@ -42,14 +42,17 @@ GVAR(instanciationIsReady) = false;
         ["TFAR_RadioRequestEvent", {
             diag_log format["TFAR_RadioRequestEvent %1 %2",_this,diag_tickTime];//#TODO remove
 
+            //Echoed back so the client can recognise a late response to an earlier request (-1: old client)
+            private _requestId = _this param [2, -1, [0]];
+
             if !(params [["_radio_request", [], [[]]],"_requestingUnit"]) exitWith {
                 diag_log format ["TFAR - ERROR:47 - Request Content: %1; Requested By: %2", _radio_request, _requestingUnit];
-                ["TFAR_RadioRequestResponseEvent", ["ERROR:47"], _requestingUnit] call CBA_fnc_targetEvent;
+                ["TFAR_RadioRequestResponseEvent", [["ERROR:47"], _requestId], _requestingUnit] call CBA_fnc_targetEvent;
             };
 
             private _response = [_radio_request, _requestingUnit] call TFAR_fnc_instanciateRadios;
             diag_log format["Send TFAR_RadioRequestResponseEvent %1 %2",_response,diag_tickTime]; //#TODO remove
-            ["TFAR_RadioRequestResponseEvent", [_response], _requestingUnit] call CBA_fnc_targetEvent;
+            ["TFAR_RadioRequestResponseEvent", [_response, _requestId], _requestingUnit] call CBA_fnc_targetEvent;
 
             /*
             //Answer request _response is an array of ["baseclass_ID","baseclass_ID"] of all radios requested

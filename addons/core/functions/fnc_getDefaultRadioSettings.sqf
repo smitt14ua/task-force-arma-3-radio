@@ -33,28 +33,29 @@ params [
 ];
 
 private "_return";
+//Set to true below if the settings are only provisional
+GVAR(defaultSettingsProvisional) = false;
 
 if (_isSR) then {
 
     private _frequencies = _unit getVariable ["TFAR_freq_sr", (group _unit) getVariable "TFAR_freq_sr"];
 
     if (TFAR_SameSRFrequenciesForSide && {isNil "_frequencies"}) then {
-        _return = switch (_unit call BIS_fnc_objectSide) do {
-            case west : {
-                +(missionNamespace getVariable "TFAR_freq_sr_west");
-            };
-            case east : {
-                +(missionNamespace getVariable "TFAR_freq_sr_east");
-            };
-            default {
-                +(missionNamespace getVariable "TFAR_freq_sr_independent");
-            };
+        private _sideName = switch (_unit call BIS_fnc_objectSide) do {
+            case west : {"west"};
+            case east : {"east"};
+            default {"independent"};
         };
-        // the side settings were generated on the server, so they carry the server's owner UID
-        // (they can still be missing on a JIP client before the server's public variable arrived, then generate them)
+        _return = missionNamespace getVariable ("TFAR_freq_sr_" + _sideName);
         if (isNil "_return") then {
-            _return = true call DFUNC(generateSRSettings);
+            // Missing until the server's public variable arrived. Build them like the server does,
+            // TFAR_fnc_getSwSettings doesn't store these provisional settings.
+            GVAR(defaultSettingsProvisional) = true;
+            _return = false call DFUNC(generateSRSettings);
+            _return set [2, +(missionNamespace getVariable ["TFAR_defaultFrequencies_sr_" + _sideName, _return select 2])];
         } else {
+            // the side settings were generated on the server, so they carry the server's owner UID
+            _return = +_return;
             _return set [RADIO_OWNER, getPlayerUID player];
         };
     } else {
@@ -76,20 +77,20 @@ if (_isSR) then {
     private _frequencies = _unit getVariable ["TFAR_freq_lr", (group _unit) getVariable "TFAR_freq_lr"];
 
     if (TFAR_SameLRFrequenciesForSide && {isNil "_frequencies"}) then {
-        _return = switch (_unit call BIS_fnc_objectSide) do {
-            case west : {
-                +(missionNamespace getVariable "TFAR_freq_lr_west");
-            };
-            case east : {
-                +(missionNamespace getVariable "TFAR_freq_lr_east");
-            };
-            default {
-                +(missionNamespace getVariable "TFAR_freq_lr_independent");
-            };
+        private _sideName = switch (_unit call BIS_fnc_objectSide) do {
+            case west : {"west"};
+            case east : {"east"};
+            default {"independent"};
         };
-        // can still be missing on a JIP client before the server's public variable arrived
+        _return = missionNamespace getVariable ("TFAR_freq_lr_" + _sideName);
         if (isNil "_return") then {
-            _return = true call DFUNC(generateLRSettings);
+            // Missing until the server's public variable arrived. Build them like the server does,
+            // TFAR_fnc_getLrSettings doesn't store these provisional settings.
+            GVAR(defaultSettingsProvisional) = true;
+            _return = false call DFUNC(generateLRSettings);
+            _return set [2, +(missionNamespace getVariable ["TFAR_defaultFrequencies_lr_" + _sideName, _return select 2])];
+        } else {
+            _return = +_return;
         };
     } else {
         if (isNil "_frequencies") then {
