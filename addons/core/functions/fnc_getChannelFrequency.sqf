@@ -7,10 +7,11 @@
     Returns the frequency for the passed channel and radio.
 
   Arguments:
-    0: Radio <OBJECT|STRING>
+    0: Radio - SW radio classname or LR radio [object, settings ID] <STRING|ARRAY>
+    1: Channel - 1-based channel number <NUMBER>
 
   Return Value:
-    Frequency <STRING>
+    Frequency, "" if the channel has none <STRING>
 
   Example:
     // LR radio - channel 1

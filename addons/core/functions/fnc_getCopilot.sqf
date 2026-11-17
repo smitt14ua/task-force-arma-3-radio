@@ -23,19 +23,11 @@ private _copilotTurret = 0;
 
 // if this is a helicopter, find the turret number that has isCopilot set to 1
 if (_this isKindOf "Helicopter") then {
-    private _turretNumber = -1;
-    _copilotTurret = -1;
-    // get a list of all turrets
-    private _turrets = configFile >> "CfgVehicles" >> (typeOf _this) >> "Turrets";
+    // get a list of all turret classes, including inherited ones (configClasses/count/select skip inherited entries)
+    private _turrets = configProperties [configFile >> "CfgVehicles" >> (typeOf _this) >> "Turrets", "isClass _x", true];
 
-    // iterate through the list of turrets
-    for "_i" from 0 to (count _turrets -1) do {
-        _turretConfigPath = _turrets select _i;
-        // filter non classes; count turrets; find out if this is the co-pilot's turret (we assume that there is just one co-pilot), if so exit the loop
-        if (isClass(_turretConfigPath) && {_turretNumber = _turretNumber + 1; getNumber(_turretConfigPath >> "isCopilot") == 1}) exitWith {
-            _copilotTurret = _turretNumber;
-        };
-    };
+    // find the co-pilot's turret (we assume that there is just one co-pilot), -1 if there is none
+    _copilotTurret = _turrets findIf {getNumber (_x >> "isCopilot") == 1};
 };
 
 _this turretUnit [_copilotTurret]

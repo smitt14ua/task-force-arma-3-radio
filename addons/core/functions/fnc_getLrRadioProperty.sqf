@@ -27,16 +27,14 @@ if (!isNil "_propertyGetVariable") exitWith {_propertyGetVariable};
 
 if (_radio isKindOf "Bag_Base") exitWith {[typeOf _radio, _property, _default] call TFAR_fnc_getVehicleConfigProperty};
 
-if (isNumber (configFile >> "CfgVehicles" >> (typeOf _radio) >> _property)
-    or {isText (configFile >> "CfgVehicles" >> (typeOf _radio) >> _property)}
-    or {isNumber (configFile >> "CfgVehicles" >> (typeOf _radio) >> (_property + "_api"))}
-    or {isText (configFile >> "CfgVehicles" >> (typeOf _radio) >> (_property + "_api"))}
-    ) exitWith {[typeOf _radio, _property] call TFAR_fnc_getVehicleConfigProperty};
+// Number/Text property (or _api variant) on the vehicle itself. configNull marks "not defined"; the getter caches the lookup.
+private _vehicleProperty = [typeOf _radio, _property, configNull] call TFAR_fnc_getVehicleConfigProperty;
+if (!(_vehicleProperty isEqualType configNull) && {!(_vehicleProperty isEqualType [])}) exitWith {_vehicleProperty};
 
-_radioTypeVariable = _radio getVariable "TF_RadioType";
+private _radioTypeVariable = _radio getVariable "TF_RadioType";
 if (!isNil "_radioTypeVariable") exitWith {[_radioTypeVariable, _property, _default] call TFAR_fnc_getVehicleConfigProperty};
 
-_radioTypeConfig = [typeOf _radio, "tf_RadioType"] call TFAR_fnc_getVehicleConfigProperty;
+private _radioTypeConfig = [typeOf _radio, "tf_RadioType"] call TFAR_fnc_getVehicleConfigProperty;
 if (_radioTypeConfig != "") exitWith {[_radioTypeConfig, _property, _default] call TFAR_fnc_getVehicleConfigProperty};
 
 private _isAirRadio = (typeOf _radio) isKindOf "Air";

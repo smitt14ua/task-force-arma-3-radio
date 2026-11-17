@@ -19,7 +19,7 @@
 */
 params[["_radio", "", [""]]];
 
-if ((_this call TFAR_fnc_getAdditionalSwChannel) == (_this call TFAR_fnc_getSwChannel)) exitWith {
+if ((_radio call TFAR_fnc_getAdditionalSwChannel) == (_radio call TFAR_fnc_getSwChannel)) exitWith {
     _radio call TFAR_fnc_getAdditionalSwStereo;
 };
 

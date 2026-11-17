@@ -27,9 +27,12 @@ params ["_item", "_property", ["_default", ""]];
 if ((isNil "_item") || {!(_item isEqualType "") }) exitWith {_default};//This is probably not needed... +0.01ms calltime so.... ehh...
 
 //Caching reduces function calltime from ~0.4ms to 0.023ms
-private _cacheName = (_item + _property);
+//A missing property is cached as configNull, so every caller gets its own default
+private _cacheName = _item + "|" + _property;
 private _cachedEntry = GVAR(VehicleConfigCacheNamespace) getVariable _cacheName;
-if (!isNil "_cachedEntry") exitWith {_cachedEntry};
+if (!isNil "_cachedEntry") exitWith {
+    if (_cachedEntry isEqualType configNull) then {_default} else {_cachedEntry}
+};
 
 private _cfgApiProperty = (configFile >> "CfgVehicles" >> _item >> _property + "_api");
 private _cfgProperty = (configFile >> "CfgVehicles" >> _item >> _property);
@@ -37,7 +40,9 @@ private _cfgProperty = (configFile >> "CfgVehicles" >> _item >> _property);
 //#TODO if both are configNull, we can immediately return default
 
 if (isNumber _cfgApiProperty) exitWith {
-    getNumber _cfgApiProperty
+    private _value = getNumber _cfgApiProperty;
+    GVAR(VehicleConfigCacheNamespace) setVariable [_cacheName,_value];
+    _value
 };
 
 if (isNumber _cfgProperty) exitWith {
@@ -47,7 +52,9 @@ if (isNumber _cfgProperty) exitWith {
 };
 
 if (isText _cfgApiProperty) exitWith {
-    getText _cfgApiProperty
+    private _value = getText _cfgApiProperty;
+    GVAR(VehicleConfigCacheNamespace) setVariable [_cacheName,_value];
+    _value
 };
 
 if (isText _cfgProperty) exitWith {
@@ -62,6 +69,6 @@ if (isArray _cfgProperty) exitWith {
     _value
 };
 
-GVAR(VehicleConfigCacheNamespace) setVariable [_cacheName,_default];
+GVAR(VehicleConfigCacheNamespace) setVariable [_cacheName,configNull];
 
 _default

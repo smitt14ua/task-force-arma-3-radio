@@ -10,8 +10,10 @@
     0: Vehicle <OBJECT>
 
   Return Value:
-    0: Vehicle <OBJECT>
-    1: Radio Settings ID <STRING>
+    LR radios of the vehicle, [] if it has none <ARRAY of ARRAYs>
+      each entry:
+        0: Vehicle <OBJECT>
+        1: Radio Settings ID <STRING>
 
   Example:
     _radios = _vehicle call TFAR_fnc_getVehicleRadios;

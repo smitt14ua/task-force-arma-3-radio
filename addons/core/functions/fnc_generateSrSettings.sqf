@@ -18,7 +18,7 @@
     5: Additional active channel <NUMBER>
     6: Additional active channel stereo mode <NUMBER>
     7: Owner's UID <STRING>
-    8: Speaker mode <NUMBER>
+    8: Speaker mode <BOOL>
     9: turned on <BOOL>
     10: Additional channel volume <NUMBER>
 
@@ -35,7 +35,7 @@ private _sw_frequencies = [];
 
 if (_this isEqualType true) then {
     if (!_this) then {
-        for "_i" from 0 to TFAR_MAX_CHANNELS step 1 do {
+        for "_i" from 0 to (TFAR_MAX_CHANNELS - 1) step 1 do {
             _sw_frequencies set [_i, "50"];
         };
         _set = true;
