@@ -174,8 +174,6 @@ GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are cu
 ["TFAR_event_OnSWchannelSet", {
     params ["", "_radio", "_newChannel", "_isAdditional", "_oldChannel"];
 
-    //Toggling the additional channel off reports the old channel, read the actual one
-    if (_isAdditional) then {_newChannel = _radio call TFAR_fnc_getAdditionalSwChannel;};
     if (_newChannel == _oldChannel) exitWith {};
 
     //Only restart if the changed channel (primary or additional) is the one transmitting
@@ -196,8 +194,6 @@ GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are cu
 
     private _radio = [_radioObj, _radioQualif];
 
-    //Toggling the additional channel off reports the old channel, read the actual one
-    if (_isAdditional) then {_newChannel = _radio call TFAR_fnc_getAdditionalLrChannel;};
     if (_newChannel == _oldChannel) exitWith {};
 
     //Only restart if the changed channel (primary or additional) is the one transmitting

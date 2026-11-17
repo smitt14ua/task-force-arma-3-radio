@@ -51,7 +51,7 @@ if (((count _swRadios > 0) || _currentUnitIsRemote) && {[TFAR_currentUnit, _isol
         _swRadios = _swRadios + _playerRadios;
     };
     {
-        private _settings = _x call TFAR_fnc_getSwSettings; //Fetch once instead of in every getter
+        private _settings = _x call TFAR_fnc_getSwSettings; //Read power/speaker state directly instead of through separate getters
         if (!isNil "_settings" && {_settings param [POWER_OFFSET, true]}) then {
             if (!(_settings param [TFAR_SW_SPEAKER_OFFSET, false]) //If speakers are enabled we will not have it on our headset at the same time... I think...
                 or {(_currentUnitIsRemote) and {_x in _playerRadios}} //When remote controlling a unit.. Still hear your original Radios
@@ -76,7 +76,7 @@ if (((count _lrRadios > 0) || _currentUnitIsRemote) && {[TFAR_currentUnit, _isol
         _playerRadios = player call TFAR_fnc_lrRadiosList;
     };
     {
-        private _settings = _x call TFAR_fnc_getLrSettings; //Fetch once instead of in every getter
+        private _settings = _x call TFAR_fnc_getLrSettings; //Read power/speaker state directly instead of through separate getters
         if (!isNil "_settings" && {_settings param [POWER_OFFSET, true]}) then {
             if (!(_settings param [TFAR_LR_SPEAKER_OFFSET, false])
                 || {_currentUnitIsRemote && {_x in _playerRadios}} //When remote controlling a unit.. Still hear your original Radios

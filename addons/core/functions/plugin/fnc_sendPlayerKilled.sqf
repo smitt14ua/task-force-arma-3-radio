@@ -20,7 +20,11 @@
 
 _this setRandomLip false;
 
-_this call TFAR_fnc_releaseAllTangents;
+//Runs on every client (MPKilled). The plugin treats RELEASE_ALL_TANGENTS as a release of
+//its own tangent, so only send it for the local unit, or a nearby death would cut our transmission.
+if (_this isEqualTo TFAR_currentUnit) then {
+    _this call TFAR_fnc_releaseAllTangents;
+};
 
 private _request = format["KILLED	%1~", (_this getVariable ["TFAR_unitName", name _this])];//Async call will always return "OK"
 private _result = "task_force_radio_pipe" callExtension _request;

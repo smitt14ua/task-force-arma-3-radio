@@ -138,7 +138,6 @@ PREP(getLrChannel);
 PREP(getSwStereo);
 PREP(getSwFrequency);
 PREP(getRadioDialogFrequencyPosition);
-PREP(getSwDialogFrequencyPosition);
 PREP(getLrFrequency);
 PREP(getLrStereo);
 PREP(getSwVolume);
