@@ -12,3 +12,9 @@ GVAR(radioTowerList) = [] call CBA_fnc_hashCreate;
     #endif
     ([(GVAR(radioTowerList))] call CBA_fnc_hashKeys) call FUNC(pluginAddRadioTower);
 }] call CBA_fnc_addEventHandler;
+
+// Killed only fires where the tower is local, it broadcasts this event so every client stops relaying over it
+[QGVAR(towerKilled), {
+    params ["_tower"];
+    [_tower] call FUNC(deleteRadioTower);
+}] call CBA_fnc_addEventHandler;

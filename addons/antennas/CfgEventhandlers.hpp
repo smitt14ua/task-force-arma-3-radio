@@ -12,6 +12,12 @@ class Extended_InitPost_EventHandlers {
     };
 };
 
+class Extended_Killed_EventHandlers {
+    class TFAR_Land_Communication_F {
+        ADDON = QUOTE([ARR_2(QQGVAR(towerKilled),[_this select 0])] call CBA_fnc_globalEvent);
+    };
+};
+
 class Extended_Deleted_EventHandlers {
     class TFAR_Land_Communication_F {
         ADDON = QUOTE((_this param [ARR_2(0,_this)]) call FUNC(deleteRadioTower));

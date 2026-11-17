@@ -69,7 +69,7 @@ class rf7800str_radio_dialog {
         action = "[1, false] call TFAR_fnc_setChannelViaDialog;";
     };
     class speakers: HiddenButton {
-        idc = IDC_RF7800STR_INCREASE_VOLUME;
+        idc = IDC_RF7800STR_SPEAKERS;
         x = "0.267453 * safezoneW + safezoneX";
         y = "0.4626 * safezoneH + safezoneY";
         w = "0.0144375 * safezoneW";
@@ -89,7 +89,7 @@ class rf7800str_radio_dialog {
         tooltip = ECSTRING(core,stereo_settings);
     };
     class channel_Switch: HiddenRotator {
-        idc = IDC_RF7800STR_PREV_CHANNEL;
+        idc = IDC_RF7800STR_NEXT_CHANNEL_ALT;
         x = "0.122047 * safezoneW + safezoneX";
         y = "0.3053 * safezoneH + safezoneY";
         w = "0.0288750 * safezoneW";
@@ -98,7 +98,7 @@ class rf7800str_radio_dialog {
         onMouseButtonDown ="[_this select 1, false] call TFAR_fnc_setChannelViaDialog;";
     };
     class volume_Switch: HiddenRotator {
-        idc = IDC_RF7800STR_SPEAKERS;
+        idc = IDC_RF7800STR_INCREASE_VOLUME;
         x = "0.172578 * safezoneW + safezoneX";
         y = "0.2899 * safezoneH + safezoneY";
         w = "0.0314531 * safezoneW";

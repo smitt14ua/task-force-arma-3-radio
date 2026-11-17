@@ -21,16 +21,35 @@
 
 TRACE_1("TFAR_antennas_fnc_pluginAddRadioTower",_this);
 
-for "_y" from 0 to (count _this)-1 step 50 do { //Only 50 per call to not exceed max message length
-    private _towersToProcess = (_this select [_y,50]);
-    private _towerData = _towersToProcess apply {
-        private _range = [GVAR(radioTowerList),_x] call CBA_fnc_hashGet;
-        private _netID = netID _x;
-        ([_netID,_range,position _x] joinString ";")
-    };
+// Async plugin messages must not exceed 2040 bytes, batch by message length ("RadioTwrAdd<TAB>" + data + "~")
+private _maxDataLength = 2040 - 13;
+private _towerData = [];
+private _dataLength = 0;
+
+private _fnc_sendBatch = {
     #ifdef DEBUG_MODE_FULL
         diag_log _towerData;
         systemChat "sendBatch";
     #endif
     "task_force_radio_pipe" callExtension format["RadioTwrAdd	%1~", _towerData joinString TF_new_line];
+};
+
+{
+    private _range = [GVAR(radioTowerList),_x] call CBA_fnc_hashGet;
+    // The plugin compares against ASL player positions
+    private _entry = [netID _x,_range,getPosASL _x] joinString ";";
+    private _entryLength = count _entry + 1; // + newline separator
+
+    if (_towerData isNotEqualTo [] && {_dataLength + _entryLength > _maxDataLength}) then {
+        call _fnc_sendBatch;
+        _towerData = [];
+        _dataLength = 0;
+    };
+
+    _towerData pushBack _entry;
+    _dataLength = _dataLength + _entryLength;
+} forEach _this;
+
+if (_towerData isNotEqualTo []) then {
+    call _fnc_sendBatch;
 };

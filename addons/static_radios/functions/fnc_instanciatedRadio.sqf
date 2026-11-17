@@ -33,7 +33,18 @@ if (_radioContainer call TFAR_fnc_isLRRadio) exitWith {_radioContainer};
 
 if (_radioClass isEqualTo "" || {!(_radioClass call TFAR_fnc_isPrototypeRadio)}) exitWith {_radioClass};
 
-private _radioInstanciated = format ["%1_%2", _radioClass, ([[_radioClass]] call TFAR_fnc_instanciateRadios) select 0];
+// Vanilla ItemRadio has no instances of its own, resolve it to the default personal radio (like core's requestRadios)
+private _radioBaseClass = _radioClass;
+if (_radioBaseClass == "ItemRadio") then {
+    _radioBaseClass = (_radioContainer call TFAR_fnc_getDefaultRadioClasses) param [1, ""];
+};
+_radioBaseClass = [_radioBaseClass, "tf_parent", ""] call TFAR_fnc_getWeaponConfigProperty;
+if (_radioBaseClass isEqualTo "") exitWith {_radioClass};
+
+private _radioID = ([[_radioBaseClass]] call TFAR_fnc_instanciateRadios) select 0;
+if (_radioID < 1) exitWith {_radioClass};
+
+private _radioInstanciated = format ["%1_%2", _radioBaseClass, _radioID];
 
 if (_radioInstanciated != _radioClass) then {
     _radioContainer addWeaponCargoGlobal ["arifle_MX_F", 1];

@@ -33,7 +33,8 @@ class CfgPatches {
     requiredVersion = REQUIRED_VERSION;
     requiredAddons[] = {
         "tfar_core",
-        "tfar_static_radios"
+        "tfar_static_radios",
+        "A3_Supplies_F_Enoch_Bags" // B_RadioBag_01_* patched in enoch\CfgVehicles.hpp
     };
     Url = "https://github.com/michail-nikolaev/task-force-arma-3-radio";
     VERSION_CONFIG;

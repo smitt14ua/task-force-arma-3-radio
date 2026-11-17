@@ -22,24 +22,30 @@
 */
 params ["_target", "_player", "_params"];
 
-_vehicle = _player getVariable "TFAR_ExternalIntercomVehicle";
+private _vehicle = _player getVariable "TFAR_ExternalIntercomVehicle";
 private _intercomRootClass = configFile >> "CfgVehicles" >> typeOf _vehicle >> "ACE_SelfActions" >> "TFAR_IntercomChannel";
 private _intercomChannels = (_intercomRootClass) call BIS_fnc_getCfgSubClasses;
-private _channelId = -1;
-private _searchTerm = "ACE_Player)],";
-private _statement = "";
+// Current statements: "[_target,_player,N] call TFAR_fnc_setIntercomChannel"
+// Legacy statements: "...ACE_Player)],N..."
+private _searchTerms = ["_player,", "ACE_Player)],"];
 
 _intercomChannels = _intercomChannels apply {
-    _statement = getText(_intercomRootClass >> _x >> "statement");
-    private _searchIndex = _statement find _searchTerm;
+    private _statement = getText(_intercomRootClass >> _x >> "statement");
+    private _channelString = "";
+    {
+        private _searchIndex = _statement find _x;
+        if (_searchIndex != -1) exitWith {
+            // Since we're dealing with unpredictable developers, search a string of 5
+            // characters then filter out anything non-numeric but include negative (-)
+            _channelString = [_statement select [(_searchIndex + count _x), 5], "-0123456789"] call BIS_fnc_filterString;
+        };
+    } forEach _searchTerms;
+
     // Skip channels whose statement doesn't match the expected pattern
-    if (_searchIndex == -1) then {
+    if (_channelString isEqualTo "") then {
         []
     } else {
-        // Since we're dealing with unpredictable developers, search a string of 5
-        // characters then filter out anything non-numeric but include negative (-)
-        _channelId = parseNumber ([_statement select [(_searchIndex + count _searchTerm),5], "-0123456789"] call BIS_fnc_filterString);
-        [getText(_intercomRootClass >> _x >> "displayName"), _channelId];
+        [getText(_intercomRootClass >> _x >> "displayName"), parseNumber _channelString]
     };
 };
 _intercomChannels = _intercomChannels select {_x isNotEqualTo []};

@@ -114,7 +114,7 @@ class anprc148jem_radio_dialog {
         action = "[1, false] call TFAR_fnc_setChannelViaDialog;";
     };
     class additional: HiddenButton {
-        idc = IDC_ANPRC148JEM_INCREASE_VOLUME;
+        idc = IDC_ANPRC148JEM_ADDITIONAL;
         x = "0.168969 * safezoneW + safezoneX";
         y = "0.5011 * safezoneH + safezoneY";
         w = "0.0242813 * safezoneW";
@@ -123,7 +123,7 @@ class anprc148jem_radio_dialog {
         action = "[TF_sw_dialog_radio, TF_sw_dialog_radio call TFAR_fnc_getSwChannel] call TFAR_fnc_setAdditionalSwChannel; call TFAR_fnc_updateSWDialogToChannel; [TF_sw_dialog_radio, false] call TFAR_fnc_showRadioInfo;";
     };
     class speakers: HiddenButton {
-        idc = IDC_ANPRC148JEM_DECREASE_VOLUME;
+        idc = IDC_ANPRC148JEM_SPEAKERS;
         x = "0.132359 * safezoneW + safezoneX";
         y = "0.5022 * safezoneH + safezoneY";
         w = "0.0269063 * safezoneW";
@@ -143,7 +143,7 @@ class anprc148jem_radio_dialog {
         tooltip = ECSTRING(core,stereo_settings);
     };
     class volume_Switch: HiddenRotator {
-        idc = IDC_ANPRC148JEM_ADDITIONAL;
+        idc = IDC_ANPRC148JEM_INCREASE_VOLUME;
         x = "0.191656 * safezoneW + safezoneX";
         y = "0.1139 * safezoneH + safezoneY";
         w = "0.045375 * safezoneW";
@@ -152,7 +152,7 @@ class anprc148jem_radio_dialog {
         onMouseButtonDown = "[_this select 1, false] call TFAR_fnc_setVolumeViaDialog;";
     };
     class channel_Switch: HiddenRotator {
-        idc = IDC_ANPRC148JEM_SPEAKERS;
+        idc = IDC_ANPRC148JEM_DECREASE_VOLUME;
         x = "0.11225 * safezoneW + safezoneX";
         y = "0.1458 * safezoneH + safezoneY";
         w = "0.0293906 * safezoneW";
