@@ -23,4 +23,4 @@ _this setRandomLip false;
 _this call TFAR_fnc_releaseAllTangents;
 
 private _request = format["KILLED	%1~", (_this getVariable ["TFAR_unitName", name _this])];//Async call will always return "OK"
-_result = "task_force_radio_pipe" callExtension _request;
+private _result = "task_force_radio_pipe" callExtension _request;

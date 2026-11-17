@@ -47,11 +47,13 @@ if (((count _swRadios > 0) || _currentUnitIsRemote) && {[TFAR_currentUnit, _isol
     _freq = [];
     private _playerRadios = [];
     if (_currentUnitIsRemote) then {
-        _swRadios append (player call TFAR_fnc_radiosList);
+        _playerRadios = player call TFAR_fnc_radiosList;
+        _swRadios = _swRadios + _playerRadios;
     };
     {
-        if ([_x] call TFAR_fnc_RadioOn) then {
-            if (!(_x call TFAR_fnc_getSwSpeakers) //If speakers are enabled we will not have it on our headset at the same time... I think...
+        private _settings = _x call TFAR_fnc_getSwSettings; //Fetch once instead of in every getter
+        if (!isNil "_settings" && {_settings param [POWER_OFFSET, true]}) then {
+            if (!(_settings param [TFAR_SW_SPEAKER_OFFSET, false]) //If speakers are enabled we will not have it on our headset at the same time... I think...
                 or {(_currentUnitIsRemote) and {_x in _playerRadios}} //When remote controlling a unit.. Still hear your original Radios
             ) then {
                 private _radioId = _x;
@@ -70,11 +72,13 @@ if (((count _lrRadios > 0) || _currentUnitIsRemote) && {[TFAR_currentUnit, _isol
     _freq_lr = [];
     private _playerRadios = [];
     if (_currentUnitIsRemote) then {
-        _lrRadios append (player call TFAR_fnc_lrRadiosList);
+        //lrRadiosList already includes the player's radios while remote controlling
+        _playerRadios = player call TFAR_fnc_lrRadiosList;
     };
     {
-        if ([_x] call TFAR_fnc_RadioOn) then {
-            if (!(_x call TFAR_fnc_getLrSpeakers)
+        private _settings = _x call TFAR_fnc_getLrSettings; //Fetch once instead of in every getter
+        if (!isNil "_settings" && {_settings param [POWER_OFFSET, true]}) then {
+            if (!(_settings param [TFAR_LR_SPEAKER_OFFSET, false])
                 || {_currentUnitIsRemote && {_x in _playerRadios}} //When remote controlling a unit.. Still hear your original Radios
             ) then {
                 private _radioType = typeOf (_x select 0);

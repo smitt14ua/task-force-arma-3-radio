@@ -25,8 +25,6 @@ params ["_player"];
 private _request = _this call TFAR_fnc_preparePositionCoordinates;
 private _result = "task_force_radio_pipe" callExtension _request;
 
-_splitResult = _result splitString "";
-
 if (_result != "OK") then {
 
     if (GVAR(noTSNotConnectedHint) && {_result == "Not connected to TeamSpeak"}) exitWith {};
@@ -41,7 +39,11 @@ if (_result != "OK") then {
 };
 
 //#TODO this is a bad place to do it, why check every update... 
+//"Killed" only fires where the unit is local, so it never fired for other players. MPKilled fires on every machine,
+//and only once per machine even if every client adds it. Variable is local, so each client adds it only once per unit.
 if !(_player getVariable ["TFAR_killedEHAttached",false]) then {
-    _player addEventHandler ["Killed", {(_this select 0) call TFAR_fnc_sendPlayerKilled}];
+    _player addMPEventHandler ["MPKilled", {
+        if (hasInterface && {!isNil "TFAR_currentUnit"}) then {(_this select 0) call TFAR_fnc_sendPlayerKilled};
+    }];
     _player setVariable ["TFAR_killedEHAttached", true];
 };

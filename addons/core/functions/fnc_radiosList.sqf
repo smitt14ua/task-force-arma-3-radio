@@ -38,6 +38,6 @@ if (_lastCache > TFAR_lastLoadoutChange) exitWith {+(GVAR(VehicleConfigCacheName
 private _result = _this call _fetchItems;
 
 GVAR(VehicleConfigCacheNamespace) setVariable ["TFAR_fnc_radiosList_lastCache",diag_tickTime-0.1];//#TODO make macros from these
-GVAR(VehicleConfigCacheNamespace) setVariable ["TFAR_fnc_radiosList_CachedRadios",_result];
+GVAR(VehicleConfigCacheNamespace) setVariable ["TFAR_fnc_radiosList_CachedRadios",+_result]; //Store a copy, callers may modify the returned array
 
 _result

@@ -23,8 +23,6 @@
 
 params ["_player", "_isolated_and_inside", "_can_speak", "_depth"];
 
-private _result = false;
-
 if (_depth > 0) exitWith {true};
 
 (_isolated_and_inside or {isAbleToBreathe _player})

@@ -48,7 +48,7 @@ private _speakerRadios = TFAR_speakerRadios;
             };
         } forEach (everyBackpack _x);
     };
-} forEach ((TFAR_currentUnit nearSupplies TF_speakerDistance) - [TFAR_currentUnit]);
+} forEach ((TFAR_currentUnit nearSupplies TF_speakerDistance) select {!(_x isKindOf "CAManBase")}); //Units have no cargo of their own, their radios are in TFAR_speakerRadios
 //#TODO doesn't catch static LRRadio backpacks on ground because they are not in any Holder
 //Are you sure? nearestObjects seems to return a container and backpacks returns radio backpacks.. Should verify that again It may not see them because of TFAR_LRSpeakersEnabled not set
 
@@ -68,8 +68,8 @@ private _speakerRadios = TFAR_speakerRadios;
             if (isNull (commander _x) && {count (_x getVariable ["commander_radio_settings", []]) > 0}) then {
                 _lrs pushBack [_x, "commander_radio_settings"];
             };
-            if (isNull (_x call TFAR_fnc_getCopilot) && {count (_x getVariable ["turretUnit_0_radio_setting", []]) > 0}) then {
-                _lrs pushBack [_x, "turretUnit_0_radio_setting"];
+            if (isNull (_x call TFAR_fnc_getCopilot) && {count (_x getVariable ["copilot_radio_setting", []]) > 0}) then { //Same ID as in fnc_vehicleLr.sqf
+                _lrs pushBack [_x, "copilot_radio_setting"];
             };
 
             {
@@ -90,7 +90,7 @@ private _speakerRadios = TFAR_speakerRadios;
     };
 } forEach (TFAR_currentUnit nearEntities [["LandVehicle", "Air", "Ship"], TF_speakerDistance]);
 
-private _empty = (count _speakerRadios == 0);
+private _empty = _speakerRadios isEqualTo [];
 //If we didn't have speakers in last call and don't have any now. Skip calling Extension
 if (!(missionnamespace getVariable ["TFAR_hadSpeakers",false]) && _empty) exitWith {};
 TFAR_hadSpeakers = !_empty;
