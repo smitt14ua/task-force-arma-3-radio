@@ -326,30 +326,37 @@
             <Key ID="STR_TFAR_SETTINGS_FrequencyNames_SR_west">
                 <Original>SR frequency names (WEST)</Original>
                 <English>SR frequency names (WEST)</English>
+                <Ukrainian>Назви частот КХ (WEST)</Ukrainian>
             </Key>
             <Key ID="STR_TFAR_SETTINGS_FrequencyNames_SR_east">
                 <Original>SR frequency names (EAST)</Original>
                 <English>SR frequency names (EAST)</English>
+                <Ukrainian>Назви частот КХ (EAST)</Ukrainian>
             </Key>
             <Key ID="STR_TFAR_SETTINGS_FrequencyNames_SR_independent">
                 <Original>SR frequency names (Independent)</Original>
                 <English>SR frequency names (Independent)</English>
+                <Ukrainian>Назви частот КХ (Independent)</Ukrainian>
             </Key>
             <Key ID="STR_TFAR_SETTINGS_FrequencyNames_LR_west">
                 <Original>LR frequency names (WEST)</Original>
                 <English>LR frequency names (WEST)</English>
+                <Ukrainian>Назви частот ДХ (WEST)</Ukrainian>
             </Key>
             <Key ID="STR_TFAR_SETTINGS_FrequencyNames_LR_east">
                 <Original>LR frequency names (EAST)</Original>
                 <English>LR frequency names (EAST)</English>
+                <Ukrainian>Назви частот ДХ (EAST)</Ukrainian>
             </Key>
             <Key ID="STR_TFAR_SETTINGS_FrequencyNames_LR_independent">
                 <Original>LR frequency names (Independent)</Original>
                 <English>LR frequency names (Independent)</English>
+                <Ukrainian>Назви частот ДХ (Independent)</Ukrainian>
             </Key>
             <Key ID="STR_TFAR_SETTINGS_FrequencyNames_desc">
                 <Original>Comma-separated frequency=name pairs, using a decimal point for fractional frequencies. Up to 16 definitions; names are limited to 8 characters. Example: 50=COY NET,60.2=1/2 SEC</Original>
                 <English>Comma-separated frequency=name pairs, using a decimal point for fractional frequencies. Up to 16 definitions; names are limited to 8 characters. Example: 50=COY NET,60.2=1/2 SEC</English>
+                <Ukrainian>Пари частота=назва через кому; дробові частоти — через крапку. До 16 записів; назва — не довше 8 символів. Приклад: 50=COY NET,60.2=1/2 SEC</Ukrainian>
             </Key>
             <Key ID="STR_TFAR_SETTINGS_same_lr_frequencies_for_side">
                 <Original>Same LR frequencies for side</Original>
@@ -3090,6 +3097,7 @@ Normal radyo su altı radyosuyla iletişim kuramaz (herhangi bir ses gelmez). Da
         <Key ID="STR_TFAR_CORE_additional_radio_volume">
             <Original>Additional volume: %1</Original>
             <English>Additional volume: %1</English>
+            <Ukrainian>Гучність дод. каналу: %1</Ukrainian>
         </Key>
         <Key ID="STR_TFAR_CORE_radio_channel_1">
             <Original>Channel 1</Original>
