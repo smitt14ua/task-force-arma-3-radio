@@ -7,8 +7,8 @@
     Sets the active LR radio to the passed radio
 
   Arguments:
-    0: Radio <OBJECT>
-    1: Radio ID <OBJECT>
+    0: Radio object <OBJECT>
+    1: Radio ID <STRING>
 
   Return Value:
     None
@@ -20,6 +20,7 @@
 */
 private _old = TF_lr_active_radio;
 TF_lr_active_radio = _this;
+//TF_lr_active_curator_radio is not read anywhere in TFAR, kept for third party scripts
 if (TFAR_currentUnit == player) then {
     TF_lr_active_curator_radio = _this;
 };

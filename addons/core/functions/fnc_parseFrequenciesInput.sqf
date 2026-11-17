@@ -10,8 +10,8 @@
   Arguments:
     0: argument name <STRING>
     1: min amount of channels <NUMBER>
-    2: min freq <NUMBER>
-    3: max freq <NUMBER>
+    2: max freq <NUMBER>
+    3: min freq <NUMBER>
     4: round power <NUMBER>
 
   Return Value:

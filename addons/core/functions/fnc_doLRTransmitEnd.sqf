@@ -1,7 +1,7 @@
 #include "script_component.hpp"
 
 /*
-  Name: TFAR_fnc_doSRTransmitEnd
+  Name: TFAR_fnc_doLRTransmitEnd
 
   Author: Dedmen, NKey
     End a LR Transmission manually, this is internal function.

@@ -25,13 +25,13 @@ private _cfgWeapons = configFile >> "CfgWeapons"; //So we don't resolve every ti
 // _loadouts is an associative array [loadoutName, loadoutContent, loadoutName, ...], so we have to skip the name in our loop
 for "_i" from ((count _loadouts) - 1) to 0 step -2 do {
 
-    _inventory = _loadouts select _i;
+    private _inventory = _loadouts select _i;
     // iterate through each container
     {
-        _content = _x;
+        private _content = _x;
         // iterate through each item of the container
         {
-            _class = _cfgWeapons >> _x;
+            private _class = _cfgWeapons >> _x;
 
             //Following will replace 0.9.x Radios with their 1.0 versions. //#TODO Enable for Release -- yet untested
             //if ((_class select [0,3]) == "tf_") then {_class = "tfar_" + (_class select [3])};
