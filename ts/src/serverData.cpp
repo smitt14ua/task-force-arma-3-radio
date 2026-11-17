@@ -42,6 +42,7 @@ serverDataDirectory::serverDataDirectory() {
 
     TFAR::getInstance().doDiagReport.connect([this](std::stringstream& diag) {
         diag << "SDD:\n";
+        LockGuard_shared lock(m_lock);
         for (auto& it : data) {
             diag << TS_INDENT << it.first.baseType() << ":\n";
             diag << TS_INDENT << TS_INDENT << "myCD: " << it.second->myClientData << "\n";
@@ -51,6 +52,7 @@ serverDataDirectory::serverDataDirectory() {
     TFAR::getInstance().doTypeDiagReport.connect([this](const std::string& type, std::stringstream& diag) {
         if (type != "pos") return;
         diag << "SDD:\n";
+        LockGuard_shared lock(m_lock);
         for (auto& it : data) {
             diag << TS_INDENT << it.first.baseType() << ":\n";
             diag << TS_INDENT << TS_INDENT << "myCD: " << it.second->myClientData << "\n";
@@ -85,7 +87,7 @@ void serverDataDirectory::verify() {
 bool serverData::hasClientData(TSClientID clientID) const {
     const auto clientData = getClientData(clientID);//using public function so we have our lock
     if (!clientData) return false;
-    return abs(TFAR::getInstance().m_gameData.currentDataFrame - clientData->dataFrame) <= 1;
+    return helpers::dataFramesAdjacent(TFAR::getInstance().m_gameData.currentDataFrame, clientData->dataFrame);
 }
 
 std::shared_ptr<clientData> serverData::getClientData(TSClientID clientID) const {
@@ -104,9 +106,18 @@ std::shared_ptr<clientData> serverData::getClientData(std::string_view nickname)
 }
 
 void serverData::forEachClient(const std::function<void(const std::shared_ptr<clientData>&)>& func) {
-    LockGuard_shared lock(m_lock);
-    for (auto& cl : data) {
-        func(std::get<2>(cl));
+    //Run the callbacks without holding m_lock: they may call getClientData again and SRW locks aren't reentrant
+    //(a queued writer between the two shared acquires would deadlock).
+    std::vector<std::shared_ptr<clientData>> clients;
+    {
+        LockGuard_shared lock(m_lock);
+        clients.reserve(data.size());
+        for (auto& cl : data) {
+            clients.emplace_back(std::get<2>(cl));
+        }
+    }
+    for (auto& client : clients) {
+        func(client);
     }
 }
 
@@ -167,8 +178,12 @@ void serverData::clientUpdated(TSClientID clientID, const std::string& clientNic
     clientData->addModificationLog(std::string("clientUpdated ") + std::to_string(clientID.baseType()) + " " + clientNickname);
     LockGuard_exclusive lock_exclusive(m_lock);
 
+    //The client may have left or been replaced while we didn't hold the lock
+    const auto found = findClientData(clientID);
+    if (found == data.end() || std::get<2>(*found) != clientData)
+        return;
     //Remove and Reinsert to keep map sorted.
-    data.erase(findClientData(clientID));
+    data.erase(found);
     insertInData(clientNickname, clientID, clientData);
     //#TODO revert to old code commented below.. and instead of readding just change and sort
     //Don't need to care about duplicate nicknames. Teamspeak takes care of that
@@ -195,7 +210,7 @@ void serverData::debugPrint(std::stringstream& diag, bool withPos) const {
             diag << TS_INDENT << TS_INDENT << TS_INDENT << TS_INDENT << "POSINTERP: " << x << "," << y << "," << z << "\n";
             diag << TS_INDENT << TS_INDENT << TS_INDENT << TS_INDENT << "POSRAW: " << x2 << "," << y2 << "," << z2 << "\n";
             diag << TS_INDENT << TS_INDENT << TS_INDENT << TS_INDENT << "VIEW: " << static_cast<float>(static_cast<AngleDegrees>(cData->getViewDirection())) << "\n";
-            diag << TS_INDENT << TS_INDENT << TS_INDENT << TS_INDENT << "LPOSTIME: " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - cData->getLastPositionUpdateTime()).count() << "us\n";
+            diag << TS_INDENT << TS_INDENT << TS_INDENT << TS_INDENT << "LPOSTIME: " << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - cData->getLastPositionUpdateTime()).count() << "us\n";
             diag << TS_INDENT << TS_INDENT << TS_INDENT << TS_INDENT << "CurTransFreq: " << cData->getCurrentTransmittingFrequency() << "\n";
             diag << TS_INDENT << TS_INDENT << TS_INDENT << TS_INDENT << "spectator: " << cData->isSpectating << "\n";
             diag << TS_INDENT << TS_INDENT << TS_INDENT << TS_INDENT << "IC: n:" << cData->getVehicleDescriptor().vehicleName << " id:"<< cData->getVehicleDescriptor().intercomSlot << "\n";
@@ -214,20 +229,26 @@ void serverData::verify() {
         const auto cData = std::get<2>(*i);
         const auto nick = cData->getNickname();
         if (std::get<0>(*i) != std::hash<indexedType>()(nick)) {
+            const auto storedHash = std::get<0>(*i);
+            const auto cid = std::get<1>(*i);
             slock.unlock();
-            LockGuard_exclusive lock(m_lock);
 
-            auto message = "TFAR: HASH mismatch! Tell Dedmen! " + nick + "=" + std::to_string(std::hash<indexedType>()(nick)) + " IDX " + std::to_string(std::get<0>(*i));
-            
+            auto message = "TFAR: HASH mismatch! Tell Dedmen! " + nick + "=" + std::to_string(std::hash<indexedType>()(nick)) + " IDX " + std::to_string(storedHash);
+
             for (auto& it : cData->getModificationLog()) {
                 message += "\n" + it;
             }
-            
+
             Teamspeak::printMessageToCurrentTab(message.c_str());
-            const auto cid = cData->clientId;
-            data.erase(i);
+
+            //The iterator is stale once the shared lock was released: look the entry up again
+            LockGuard_exclusive lock(m_lock);
+            const auto found = findClientData(cid);
+            if (found == data.end() || std::get<2>(*found) != cData || std::get<0>(*found) != storedHash)
+                return; //Changed meanwhile (left, rejoined or got fixed up)
+            data.erase(found);
             lock.unlock();
-            clientJoined(cid, nick);
+            clientJoined(cData->clientId, nick);
             return;
         }
     }

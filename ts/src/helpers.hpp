@@ -10,6 +10,8 @@
 #include <functional>
 #include <emmintrin.h>
 #include <iterator>
+#include <memory>
+#include <cstdlib>
 
 #include "SampleBuffer.hpp"
 
@@ -190,7 +192,18 @@ public:
         }
     }
 
+    //Keeps the filter alive for the call (the clientDataEffects getters return shared_ptrs)
+    template<class T>
+    static void processFilterStereo(SampleBuffer& samples, float gain, const std::shared_ptr<T>& filter, bool copyBack = true) {
+        processFilterStereo(samples, gain, filter.get(), copyBack);
+    }
+
     static float distanceForDiverRadio();
+
+    //abs(a - b) <= 1 without int overflow (a data frame can be INVALID_DATA_FRAME == INT_MAX)
+    static bool dataFramesAdjacent(int a, int b) {
+        return std::llabs(static_cast<long long>(a) - static_cast<long long>(b)) <= 1;
+    }
 };
 
 class execAtReturn {

@@ -5,6 +5,8 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <mutex>
+#include <chrono>
 #include "teamlog/logtypes.h"
 class ILogger {
 protected:
@@ -13,6 +15,7 @@ protected:
 public:
     virtual void log(const std::string& message) = 0;
     virtual void log(const std::string& message, LogLevel _loglevel) = 0;
+    virtual void flush() {}
     template<typename T>
     void operator<< (const T& data) {
         std::stringstream str;
@@ -24,12 +27,15 @@ public:
 class FileLogger : public ILogger {
 public:
     explicit FileLogger(const std::string& filePath);
-    virtual ~FileLogger() = default;
+    virtual ~FileLogger();
 
     void log(const std::string& message) override;
     void log(const std::string& message, LogLevel _loglevel) override;
+    void flush() override;
 private:
+    std::mutex fileMutex;
     std::ofstream file;
+    std::chrono::steady_clock::time_point lastFlush;
 };
 
 class TeamspeakLogger : public ILogger {
@@ -82,6 +88,8 @@ public:
     static void log(LoggerTypes type, const std::string& message);
     static void log(LoggerTypes type, const std::string& message, LogLevel _loglevel);
     static std::vector<std::shared_ptr<ILogger>> getLogger(LoggerTypes type);
+    //Flushes buffered output of all registered loggers (e.g. before copying the log files)
+    static void flushAll();
 private:
     Logger() = default;
     ~Logger() = default;

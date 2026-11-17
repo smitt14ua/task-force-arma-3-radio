@@ -7,6 +7,8 @@
 #include <public_rare_definitions.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
+#include <shared_mutex>
 
 //All Teamspeak interaction should be in here as static methods.
 
@@ -101,10 +103,15 @@ public:
 private:
     static Teamspeak& getInstance();  //Used for accessing stored variables
 
+    //serverData is used from the TS callback, pipe, command and audio threads and erased on disconnect.
+    //Entries are shared_ptrs so a caller keeps its entry alive even if it gets erased meanwhile.
+    //Creates the entry if missing. Use only for writes, never from the audio thread.
+    static std::shared_ptr<TeamspeakServerData> getServerData(TSServerID serverConnectionHandlerID);
+    //Returns nullptr if there is no entry. Never inserts.
+    static std::shared_ptr<TeamspeakServerData> findServerData(TSServerID serverConnectionHandlerID);
 
-
-
-    std::map<dataType::TSServerID, TeamspeakServerData> serverData;
+    std::shared_mutex serverDataLock;
+    std::map<dataType::TSServerID, std::shared_ptr<TeamspeakServerData>> serverData;
 
 };
 

@@ -3,6 +3,9 @@
 #include "task_force_radio.hpp"
 #include "antennaManager.h"
 #include <iomanip>
+#include <algorithm>
+#include <cstring>
+#include <ctime>
 
 #define logParam(x) str << #x << " " << (x) << "\n"
 #define logParamN(n,x) str << #n << " " << (x) << "\n"
@@ -50,7 +53,7 @@ extern float debugDisplayThing2;
 //    return lastFreq;
 //}
 
-Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>*
+std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>
  clientDataEffects::getFilterObjectInterception(uint8_t objectCount) {
     objectCount = std::min(objectCount, static_cast<uint8_t>(5));
     static float lastStrength = 400;
@@ -62,17 +65,11 @@ Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>*
 
     debugDisplayThing = 2000 - (objectCount * lastStrength);
     debugDisplayThing2 = objectCount;
-    LockGuard_shared lock_shared(m_lock);
-    if (!filtersObjectInterception.count(objectCount)) {
-        lock_shared.unlock();
-        LockGuard_exclusive lock_exclusive(m_lock);
-        filtersObjectInterception[objectCount] = std::make_unique<Dsp::SimpleFilter<
-            Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>();
-
-        filtersObjectInterception[objectCount]->setup(2, 48000, 2000 - (objectCount * lastStrength));
-        //#TODO not happy with that..
-    }
-    return filtersObjectInterception[objectCount].get();
+    const auto strength = lastStrength;
+    //#TODO not happy with that..
+    return getOrCreate(filtersObjectInterception, objectCount, [objectCount, strength](auto& filter) {
+        filter.setup(2, 48000, 2000 - (objectCount * strength));
+    });
 }
 
 void clientData::updatePosition(const unitPositionPacket & packet) {
@@ -97,7 +94,7 @@ void clientData::updatePosition(const unitPositionPacket & packet) {
     //OutputDebugStringA(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - lastPositionUpdateTime).count()).c_str());
     //OutputDebugStringA("\n");
 
-    lastPositionUpdateTime = std::chrono::system_clock::now();
+    lastPositionUpdateTime = std::chrono::steady_clock::now();
     dataFrame = TFAR::getInstance().m_gameData.currentDataFrame;
 }
 
@@ -107,7 +104,11 @@ Position3D clientData::getClientPosition() const {
     if (velocity.isNull())
         return clientPosition;
 
-    const auto offsetTime = std::chrono::duration<float>(std::chrono::system_clock::now() - lastPositionUpdateTime).count();
+    //Clamp the extrapolation age: if POS updates stop, the position must not drift away forever.
+    //Far players get POS about every TFAR_FAR_PLAYER_UPDATE_TIME (3.5 s) plus processing spread over frames, and a client
+    //is considered dead (isAlive) after missing two DFRAMEs (~7 s) anyway, so 8 s never affects normal updates.
+    constexpr auto maxExtrapolation = std::chrono::duration<float>(MILLIS_TO_EXPIRE * 2);
+    const auto offsetTime = std::min(std::chrono::duration<float>(std::chrono::steady_clock::now() - lastPositionUpdateTime), maxExtrapolation).count();
     const auto offset = velocity * offsetTime;
 
     //float x, y, z;
@@ -135,7 +136,7 @@ float clientData::effectiveDistanceTo(clientData* other) const {
 
 bool clientData::isAlive() {
     if (dataFrame == INVALID_DATA_FRAME) return false;
-    const bool timeout = (std::chrono::system_clock::now() - getLastPositionUpdateTime() > (MILLIS_TO_EXPIRE * 5)) || (abs(TFAR::getInstance().m_gameData.currentDataFrame - dataFrame) > 1);
+    const bool timeout = (std::chrono::steady_clock::now() - getLastPositionUpdateTime() > (MILLIS_TO_EXPIRE * 5)) || !helpers::dataFramesAdjacent(TFAR::getInstance().m_gameData.currentDataFrame, dataFrame);
     if (timeout)
         dataFrame = INVALID_DATA_FRAME;
     return !timeout;
@@ -238,7 +239,13 @@ LISTED_INFO clientData::isOverLocalRadio(std::shared_ptr<clientData>& myData, bo
 
     if (senderOnLRFrequency && myData->canUseLRRadio) {//to our LR
         LockGuard_shared lock(TFAR::getInstance().m_gameData.m_lock);
-        auto &frequencyInfo = TFAR::getInstance().m_gameData.myLrFrequencies[senderFrequency];
+        //find, not operator[]: we only hold a shared lock. The frequency may also be gone since the check above.
+        const auto found = TFAR::getInstance().m_gameData.myLrFrequencies.find(senderFrequency);
+        if (found == TFAR::getInstance().m_gameData.myLrFrequencies.end()) {
+            DIAGLOG("IOLR No freq LR sf=" + senderFrequency);
+            return result;
+        }
+        auto &frequencyInfo = found->second;
         if (!TFAR::config.get<bool>(Setting::full_duplex) && //If we are currently transmitting on that Radio we can't hear so we return before result gets valid
             frequencyInfo.radioClassname == currentTransmittingRadio) {
             DIAGLOG("IOLR No duplex LR RECV");
@@ -250,7 +257,12 @@ LISTED_INFO clientData::isOverLocalRadio(std::shared_ptr<clientData>& myData, bo
         DIAGLOG("IOLR RECV! RC=" + frequencyInfo.radioClassname);
     } else if (senderOnSWFrequency && myData->canUseSWRadio) {//to our SW
         LockGuard_shared lock(TFAR::getInstance().m_gameData.m_lock);
-        auto &frequencyInfo = TFAR::getInstance().m_gameData.mySwFrequencies[senderFrequency];
+        const auto found = TFAR::getInstance().m_gameData.mySwFrequencies.find(senderFrequency);
+        if (found == TFAR::getInstance().m_gameData.mySwFrequencies.end()) {
+            DIAGLOG("IOLR No freq SW sf=" + senderFrequency);
+            return result;
+        }
+        auto &frequencyInfo = found->second;
         if (!TFAR::config.get<bool>(Setting::full_duplex) && //If we are currently transmitting on that Radio we can't hear so we return before result gets valid
             frequencyInfo.radioClassname == currentTransmittingRadio) {
             DIAGLOG("IOLR No duplex SR RECV");
@@ -372,14 +384,33 @@ std::vector<std::string> clientData::getModificationLog() const {
 }
 
 void clientData::circularLog(const std::string& message) {
-    std::stringstream msg;
-    const auto now = std::chrono::system_clock::now();
-    const auto in_time_t = std::chrono::system_clock::to_time_t(now);
-    msg << std::put_time(std::localtime(&in_time_t), "%H:%M:%S") << " " << message;
-    LockGuard_exclusive lock(m_lock);
-    messages.push_back(msg.str());
-    if (++offset > messageCount) offset = 0;
+    //Called from the audio thread: format the "HH:MM:SS message" line without a stringstream
+    const auto in_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::tm localTime{};
+    char timeString[16] = "00:00:00";
+    if (localtime_s(&localTime, &in_time_t) == 0)
+        std::strftime(timeString, sizeof(timeString), "%H:%M:%S", &localTime);
+    std::string entry;
+    entry.reserve(std::strlen(timeString) + 1 + message.size());
+    entry.append(timeString).append(1, ' ').append(message);
 
+    LockGuard_exclusive lock(m_lock);
+    if (messages.size() < messageCount) {
+        messages.emplace_back(std::move(entry));
+    } else { //Full: overwrite the oldest entry
+        messages[offset] = std::move(entry);
+        offset = (offset + 1) % messageCount;
+    }
+}
+
+std::vector<std::string> clientData::takeCircularLog() {
+    LockGuard_exclusive lock(m_lock);
+    auto result = std::move(messages);
+    messages.clear();
+    if (offset < result.size())
+        std::rotate(result.begin(), result.begin() + offset, result.end()); //oldest first
+    offset = 0;
+    return result;
 }
 
 void clientData::verboseDataLog(std::ostream& str) {
@@ -418,7 +449,9 @@ void clientData::verboseDataLog(std::ostream& str) {
     logParamN(viewDirection, viewDirection.toString());
 
 
-    auto in_time_t = std::chrono::system_clock::to_time_t(lastPositionUpdateTime);
+    //lastPositionUpdateTime is a steady_clock point, convert it to wall clock time for the log
+    auto in_time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now() -
+        std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::steady_clock::now() - lastPositionUpdateTime));
     str << "lastPositionUpdateTime " << std::put_time(std::localtime(&in_time_t), "%H:%M:%S") << "\n";
 
     logParam(currentTransmittingFrequency);

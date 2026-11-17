@@ -324,7 +324,11 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) co
             TFAR::trackPiwik(tokens);
             return;
         case gameCommand::DFRAME:
-            TFAR::getInstance().m_gameData.currentDataFrame++;
+        {
+            //Don't overflow INVALID_DATA_FRAME (INT_MAX, e.g. a DFRAME after game disconnect): restart at 0 instead
+            auto& currentDataFrame = TFAR::getInstance().m_gameData.currentDataFrame;
+            currentDataFrame = (currentDataFrame >= INVALID_DATA_FRAME - 1) ? 0 : currentDataFrame + 1;
+        }
             return;
         case gameCommand::SPEAKERS:
             processSpeakers(tokens);
@@ -497,12 +501,13 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) co
 
             std::filesystem::create_directories(basePath,err);
 
+            Logger::flushAll(); //File loggers don't flush every line
+
             std::filesystem::copy(std::string(getenv("appdata")) + R"(\TS3Client\TFAR_pluginCommands.log)", basePath + "TFAR_pluginCommands.log",err);
             std::filesystem::copy(std::string(getenv("appdata")) + R"(\TS3Client\TFAR_gameCommands.log)", basePath + "TFAR_gameCommands.log", err);
 
             clientDataDir->forEachClient([&basePath](const std::shared_ptr<clientData>& cli) {
-                auto messages = std::move(cli->messages);
-                cli->offset = 0;
+                auto messages = cli->takeCircularLog();
                 auto nick = cli->getNickname();
                 constexpr auto illegalChars = R"(\/:?"<>|)"sv;
                 for (auto it = nick.begin(); it < nick.end(); ++it) {

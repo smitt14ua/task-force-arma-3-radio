@@ -85,26 +85,14 @@ public:
     ~clientDataEffects() = default;
 
 
-    Dsp::SimpleFilter<Dsp::Butterworth::BandPass<2>, MAX_CHANNELS>* getSpeakerPhone(const std::string& key) {
-        LockGuard_shared lock_shared(m_lock);
-        if (!filtersPhone.count(key)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            filtersPhone[key] = std::make_unique<Dsp::SimpleFilter<Dsp::Butterworth::BandPass<2>, MAX_CHANNELS>>();
-            filtersPhone[key]->setup(2, 48000, 1850, 1550);
-        }
-        return filtersPhone[key].get();
+    //The getters return shared_ptrs: the audio thread keeps using an object while another thread
+    //(resetVoices, resetRadioEffect, remove*) erases it from the map; it is freed when the last user drops it.
+    std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::BandPass<2>, MAX_CHANNELS>> getSpeakerPhone(const std::string& key) {
+        return getOrCreate(filtersPhone, key, [](auto& filter) { filter.setup(2, 48000, 1850, 1550); });
     }
 
-    Dsp::SimpleFilter<Dsp::Butterworth::BandPass<1>, MAX_CHANNELS>* getSpeakerFilter(const std::string& key) {
-        LockGuard_shared lock_shared(m_lock);
-        if (!filtersSpeakers.count(key)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            filtersSpeakers[key] = std::make_unique<Dsp::SimpleFilter<Dsp::Butterworth::BandPass<1>, MAX_CHANNELS>>();
-            filtersSpeakers[key]->setup(1, 48000, 2000, 1000);
-        }
-        return filtersSpeakers[key].get();
+    std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::BandPass<1>, MAX_CHANNELS>> getSpeakerFilter(const std::string& key) {
+        return getOrCreate(filtersSpeakers, key, [](auto& filter) { filter.setup(1, 48000, 2000, 1000); });
     }
 
     void removeSpeakerFilter(const std::string& key) {
@@ -112,55 +100,25 @@ public:
         filtersSpeakers.erase(key);
     }
 
-    PersonalRadioEffect* getSwRadioEffect(const std::string& key) {
-        LockGuard_shared lock_shared(m_lock);
-        if (!swEffects.count(key)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            swEffects[key] = std::make_unique<PersonalRadioEffect>();
-        }
-        return swEffects[key].get();
+    std::shared_ptr<PersonalRadioEffect> getSwRadioEffect(const std::string& key) {
+        return getOrCreate(swEffects, key);
     }
 
-    LongRangeRadioEffect* getLrRadioEffect(const std::string& key) {
-        LockGuard_shared lock_shared(m_lock);
-        if (!lrEffects.count(key)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            lrEffects[key] = std::make_unique<LongRangeRadioEffect>();
-        }
-        return lrEffects[key].get();
+    std::shared_ptr<LongRangeRadioEffect> getLrRadioEffect(const std::string& key) {
+        return getOrCreate(lrEffects, key);
     }
 
-    AirborneRadioEffect* getAirborneRadioEffect(const std::string& key) {
-        LockGuard_shared lock_shared(m_lock);
-        if (!airborneEffects.count(key)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            airborneEffects[key] = std::make_unique<AirborneRadioEffect>();
-        }
-        return airborneEffects[key].get();
+    std::shared_ptr<AirborneRadioEffect> getAirborneRadioEffect(const std::string& key) {
+        return getOrCreate(airborneEffects, key);
     }
 
 
-    UnderWaterRadioEffect* getUnderwaterRadioEffect(const std::string& key) {
-        LockGuard_shared lock_shared(m_lock);
-        if (!ddEffects.count(key)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            ddEffects[key] = std::make_unique<UnderWaterRadioEffect>();
-        }
-        return ddEffects[key].get();
+    std::shared_ptr<UnderWaterRadioEffect> getUnderwaterRadioEffect(const std::string& key) {
+        return getOrCreate(ddEffects, key);
     }
 
-    Clunk* getClunk(const std::string& key) {
-        LockGuard_shared lock_shared(m_lock);
-        if (!clunks.count(key)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            clunks[key] = std::make_unique<Clunk>();
-        }
-        return clunks[key].get();
+    std::shared_ptr<Clunk> getClunk(const std::string& key) {
+        return getOrCreate(clunks, key);
     }
 
     void removeClunk(const std::string& key) {
@@ -168,15 +126,8 @@ public:
         clunks.erase(key);
     }
 
-    Dsp::SimpleFilter<Dsp::Butterworth::LowPass<4>, MAX_CHANNELS>* getFilterCantSpeak(const std::string& key) {
-        LockGuard_shared lock_shared(m_lock);
-        if (!filtersCantSpeak.count(key)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            filtersCantSpeak[key] = std::make_unique<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<4>, MAX_CHANNELS>>();
-            filtersCantSpeak[key]->setup(4, 48000, 100);
-        }
-        return filtersCantSpeak[key].get();
+    std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<4>, MAX_CHANNELS>> getFilterCantSpeak(const std::string& key) {
+        return getOrCreate(filtersCantSpeak, key, [](auto& filter) { filter.setup(4, 48000, 100); });
     }
 
     void removeFilterCantSpeak(const std::string& key) {
@@ -184,16 +135,9 @@ public:
         filtersCantSpeak.erase(key);
     }
 
-    Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>* getFilterVehicle(const std::string& key, float vehicleVolumeLoss) {
+    std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>> getFilterVehicle(const std::string& key, float vehicleVolumeLoss) {
         const auto byKey = key + std::to_string(vehicleVolumeLoss);
-        LockGuard_shared lock_shared(m_lock);
-        if (!filtersVehicle.count(byKey)) {
-            lock_shared.unlock();
-            LockGuard_exclusive lock_exclusive(m_lock);
-            filtersVehicle[byKey] = std::make_unique<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>();
-            filtersVehicle[byKey]->setup(2, 48000, 20000 * (1.0 - vehicleVolumeLoss) / 4.0);
-        }
-        return filtersVehicle[byKey].get();
+        return getOrCreate(filtersVehicle, byKey, [vehicleVolumeLoss](auto& filter) { filter.setup(2, 48000, 20000 * (1.0 - vehicleVolumeLoss) / 4.0); });
     }
 
     void removeFilterVehicle(const std::string& key) {
@@ -201,9 +145,9 @@ public:
         filtersVehicle.erase(key);
     }
 
-    std::map<uint8_t, std::unique_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>> filtersObjectInterception;
+    std::map<uint8_t, std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>> filtersObjectInterception;
 
-    Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>* getFilterObjectInterception(uint8_t objectCount);
+    std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>> getFilterObjectInterception(uint8_t objectCount);
 
 
     chunkware_simple::SimpleComp compressor;
@@ -225,9 +169,32 @@ public:
 private:
     ReadWriteLock m_lock{"clientDataEffects"};
 
+    //Returns the entry for key, creating (and initializing) it if missing.
+    //try_emplace under the exclusive lock: a concurrent creator never replaces an object that is already handed out.
+    template<typename Map>
+    typename Map::mapped_type getOrCreate(Map& map, const typename Map::key_type& key) {
+        return getOrCreate(map, key, [](auto&) {});
+    }
+
+    template<typename Map, typename Init>
+    typename Map::mapped_type getOrCreate(Map& map, const typename Map::key_type& key, Init&& init) {
+        {
+            LockGuard_shared lock_shared(m_lock);
+            if (const auto found = map.find(key); found != map.end())
+                return found->second;
+        }
+        LockGuard_exclusive lock_exclusive(m_lock);
+        auto [it, inserted] = map.try_emplace(key);
+        if (inserted) {
+            it->second = std::make_shared<typename Map::mapped_type::element_type>();
+            init(*it->second);
+        }
+        return it->second;
+    }
+
     //Filters and Effects
     template<typename T>
-    using effectMap = std::map<std::string, std::unique_ptr<T>, std::less<>>;
+    using effectMap = std::map<std::string, std::shared_ptr<T>, std::less<>>;
 
     effectMap<PersonalRadioEffect> swEffects;
     effectMap<LongRangeRadioEffect> lrEffects;
@@ -267,7 +234,7 @@ public:
     auto getViewDirection() const { LockGuard_shared lock(m_lock); return viewDirection; }
     void setViewDirection(const Direction3D& val) { LockGuard_exclusive lock(m_lock); viewDirection = val; }
     auto getLastPositionUpdateTime() const { LockGuard_shared lock(m_lock); return lastPositionUpdateTime; }
-    void setLastPositionUpdateTime(const std::chrono::system_clock::time_point& val) { LockGuard_exclusive lock(m_lock); lastPositionUpdateTime = val; }
+    void setLastPositionUpdateTime(const std::chrono::steady_clock::time_point& val) { LockGuard_exclusive lock(m_lock); lastPositionUpdateTime = val; }
     auto getCurrentTransmittingFrequency() const { LockGuard_shared lock(m_lock); return currentTransmittingFrequency; }
     void setCurrentTransmittingFrequency(std::string_view val) { LockGuard_exclusive lock(m_lock); currentTransmittingFrequency = val; }
     auto getCurrentTransmittingSubtype() const { LockGuard_shared lock(m_lock); return currentTransmittingSubtype; }
@@ -297,16 +264,16 @@ public:
     void addModificationLog(std::string mod);
     std::vector<std::string> getModificationLog() const;
     void circularLog(const std::string& message);
+    //Returns the logged messages oldest first and clears the log
+    std::vector<std::string> takeCircularLog();
 
     void verboseDataLog(std::ostream& str);
 
-    std::vector <std::string> messages;
-    uint32_t offset{ 0 };
-    uint32_t messageCount{2048};
+    static constexpr uint32_t messageCount{2048};
 
     //Types that are small enough not to need locks
     bool pluginEnabled = false;
-    std::chrono::system_clock::time_point pluginEnabledCheck;
+    std::chrono::steady_clock::time_point pluginEnabledCheck; //steady: only used for intervals
     const TSClientID clientId;
     sendingRadioType currentTransmittingTangentOverType = sendingRadioType::LISTEN_TO_NONE; //Radio type client is currently transmitting on
     int voiceVolume = 0;
@@ -333,12 +300,15 @@ private:
     mutable ReadWriteLock m_lock{"clientData"};
 
     std::vector<std::string> modificationLog;
+    //Ring buffer of the last messageCount circularLog messages, guarded by m_lock. offset is the oldest entry once full.
+    std::vector<std::string> messages;
+    uint32_t offset{ 0 };
 
     std::string nickname;
 
     Position3D clientPosition;
     Direction3D viewDirection;
-    std::chrono::system_clock::time_point lastPositionUpdateTime;
+    std::chrono::steady_clock::time_point lastPositionUpdateTime; //steady: only used for intervals
 
     std::string currentTransmittingFrequency;//Frequency client is currently transmitting on
     std::string currentTransmittingSubtype;//subtype client is currently transmitting on

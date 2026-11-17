@@ -8,12 +8,31 @@
 extern struct TS3Functions ts3Functions;
 FileLogger::FileLogger(const std::string& filePath) : file(filePath) {}
 
+FileLogger::~FileLogger() {
+    flush();
+}
+
 void FileLogger::log(const std::string& message) {
+    //Written from several threads
+    std::lock_guard lock(fileMutex);
     if (file.is_open()) {
         const auto now = std::chrono::system_clock::now();
         auto inTimeT = std::chrono::system_clock::to_time_t(now);
         file << std::put_time(std::localtime(&inTimeT), "%H:%M:%S") << " " << message;
+        //Flushing every line is slow, flush at most once a second (and on flush()/close)
+        const auto steadyNow = std::chrono::steady_clock::now();
+        if (steadyNow - lastFlush >= std::chrono::seconds(1)) {
+            file.flush();
+            lastFlush = steadyNow;
+        }
+    }
+}
+
+void FileLogger::flush() {
+    std::lock_guard lock(fileMutex);
+    if (file.is_open()) {
         file.flush();
+        lastFlush = std::chrono::steady_clock::now();
     }
 }
 
@@ -64,6 +83,14 @@ std::vector<std::shared_ptr<ILogger>> Logger::getLogger(LoggerTypes type) {
     if (found != getInstance().registeredLoggers.end())
         return found->second;
     return {};
+}
+
+void Logger::flushAll() {
+    for (const auto& [type, loggers] : getInstance().registeredLoggers) {
+        for (const auto& logger : loggers) {
+            logger->flush();
+        }
+    }
 }
 
 void Logger::_registerLogger(LoggerTypes type, std::shared_ptr<ILogger> logger) {

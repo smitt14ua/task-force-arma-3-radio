@@ -72,9 +72,11 @@ void setGameClientMuteStatus(TSServerID serverConnectionHandlerID, TSClientID cl
 
         const auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(serverConnectionHandlerID);
         std::shared_ptr<clientData> clientData;
-        if (clientDataDir)
+        std::shared_ptr<::clientData> myData;
+        if (clientDataDir) {
             clientData = clientDataDir->getClientData(clientID);
-        auto myData = clientDataDir->myClientData;
+            myData = clientDataDir->myClientData;
+        }
         if (clientData == myData) return; //can't mute self... well you can but don't that's confusing to users
 
         if (clientData && myData && (TFAR::getInstance().m_gameData.alive && clientData->isAlive() || myData->isSpectating)) {
@@ -127,9 +129,9 @@ PTTDelayArguments::subtypes PTTDelayArguments::stringToSubtype(std::string_view 
 
 #include "CommandProcessor.hpp"
 
-std::atomic<std::chrono::system_clock::time_point> lastInGame = std::chrono::system_clock::now();
-std::atomic<std::chrono::system_clock::time_point> lastCheckForExpire = std::chrono::system_clock::now();
-std::atomic<std::chrono::system_clock::time_point> lastInfoUpdate = std::chrono::system_clock::now();
+std::atomic<std::chrono::steady_clock::time_point> lastInGame = std::chrono::steady_clock::now();
+std::atomic<std::chrono::steady_clock::time_point> lastCheckForExpire = std::chrono::steady_clock::now();
+std::atomic<std::chrono::steady_clock::time_point> lastInfoUpdate = std::chrono::steady_clock::now();
 
 void ServiceThread() {
 
@@ -138,7 +140,7 @@ void ServiceThread() {
             Sleep(500);
             continue;
         }
-        if ((std::chrono::system_clock::now() - lastCheckForExpire.load()) > MILLIS_TO_EXPIRE) {
+        if ((std::chrono::steady_clock::now() - lastCheckForExpire.load()) > MILLIS_TO_EXPIRE) {
             //bool isSerious = isSeriousModeEnabled(Teamspeak::getCurrentServerConnection(), Teamspeak::getMyId());
 
             if (TFAR::getInstance().getCurrentlyInGame()) {
@@ -153,12 +155,13 @@ void ServiceThread() {
                     Teamspeak::moveToSeriousChannel();//#TODO people may want to leave SeriousChannel on purpose and not be moved back
             }
                 
-            lastCheckForExpire = std::chrono::system_clock::now();
+            lastCheckForExpire = std::chrono::steady_clock::now();
             TFAR::getServerDataDirectory()->verify();
         }
-        if ((std::chrono::system_clock::now() - lastInfoUpdate.load()) > 4000ms) {
+        if ((std::chrono::steady_clock::now() - lastInfoUpdate.load()) > 4000ms) {
             updateUserStatusInfo(true);
-            lastInfoUpdate = std::chrono::system_clock::now();
+            Logger::flushAll(); //File loggers only flush when written to, push out idle tails
+            lastInfoUpdate = std::chrono::steady_clock::now();
         }
         Sleep(100);
     }
@@ -372,7 +375,9 @@ int ts3plugin_init() {
 
     TFAR::getInstance().onSeriousModeChanged.connect([]([[maybe_unused]] bool isSerious) {
         auto serverID = Teamspeak::getCurrentServerConnection();
-        TFAR::getServerDataDirectory()->getClientDataDirectory(serverID)->forEachClient(
+        const auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(serverID);
+        if (!clientDataDir) return;
+        clientDataDir->forEachClient(
             [serverID](const std::shared_ptr<clientData>& client) {
             if (client)
                 setGameClientMuteStatus(serverID, client->clientId, { false, false });
@@ -440,7 +445,7 @@ bool isPluginEnabledForUser(TSServerID serverConnectionHandlerID, TSClientID cli
     if (!clientData) return false;
 
 
-    auto currentTime = std::chrono::system_clock::now();
+    auto currentTime = std::chrono::steady_clock::now();
     bool result;
 
     if (currentTime - clientData->pluginEnabledCheck < 10s) {
@@ -472,7 +477,7 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
     ProfileFunction;
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
     _mm_setcsr((_mm_getcsr() & ~0x0040) | (0x0040));//_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
-    static std::chrono::system_clock::time_point last_no_info;
+    static std::chrono::steady_clock::time_point last_no_info;
     const auto myId = Teamspeak::getMyId(serverConnectionHandlerID);
     auto myNickname = Teamspeak::getMyNickname(serverConnectionHandlerID);
 
@@ -502,11 +507,11 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
             if (alive && TFAR::getInstance().getCurrentlyInGame() && hasPluginEnabled)
                 sampleBuffer.setToNull(); // alive player hears only alive players in serious mode
         }
-        if (std::chrono::system_clock::now() - last_no_info > MILLIS_TO_EXPIRE) {
+        if (std::chrono::steady_clock::now() - last_no_info > MILLIS_TO_EXPIRE) {
             std::string nickname = clientData->getNickname();
             if (!hasPluginEnabled)
                 log_string(std::string("No plugin enabled for ") + std::to_string(clientID.baseType()) + " " + nickname, LogLevel_DEBUG);
-            last_no_info = std::chrono::system_clock::now();
+            last_no_info = std::chrono::steady_clock::now();
         }
         LOG3DMUTE("TFAR nosim NoPlugEn");
         return;
@@ -911,7 +916,7 @@ void processTangentPress(TSServerID serverId, const std::vector<std::string_view
 
     senderClientData->circularLog(std::string("Inc Tangent ").append(command));
 
-    const auto time = std::chrono::system_clock::now();
+    const auto time = std::chrono::steady_clock::now();
     const bool pressed = tokens[1] == "PRESSED";
 
     if (!pressed) //Need to do this before we reset all his variables because after that we won't receive him anymore
@@ -1062,7 +1067,7 @@ void processPluginCommand(std::string_view command) {
 
         clientData->voiceVolume = std::atoi(volume.data());
         clientData->pluginEnabled = true;
-        clientData->pluginEnabledCheck = std::chrono::system_clock::now();
+        clientData->pluginEnabledCheck = std::chrono::steady_clock::now();
         clientData->clientTalkingNow = start;
         if (!myCommand) {
             setGameClientMuteStatus(serverId, clientData->clientId);

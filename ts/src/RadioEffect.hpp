@@ -280,7 +280,13 @@ void processRadioEffect(SampleBuffer& samples, float gain, T* effect, stereoMode
                 samples[i + j] = 0;
             }
         }
-    }    
+    }
+}
+
+//Keeps the effect alive for the call (the clientDataEffects getters return shared_ptrs)
+template<class T>
+void processRadioEffect(SampleBuffer& samples, float gain, const std::shared_ptr<T>& effect, stereoMode stereoMode) {
+    processRadioEffect(samples, gain, effect.get(), stereoMode);
 }
 
 inline void processCompressor(chunkware_simple::SimpleComp* compressor, SampleBuffer& samples) {
