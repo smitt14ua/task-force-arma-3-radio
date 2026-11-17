@@ -249,6 +249,7 @@ PREP(showRadioDialogFrequency);
 // U
 PREP(updateRadioDialogFrequency);
 PREP(updateSpeakVolumeUI);
+PREP(updateSpeakersEnabled);
 // V
 PREP(vehicleId);
 PREP(vehicleIsIsolatedAndInside);

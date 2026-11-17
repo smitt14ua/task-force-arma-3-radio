@@ -213,7 +213,12 @@ if (player call TFAR_fnc_isForcedCurator) then {
     };
 
     TFAR_core_assignedItemsCache = assignedItems TFAR_currentUnit;
+
+    //A picked up radio can already have its speakers on
+    call TFAR_fnc_updateSpeakersEnabled;
 },true] call CBA_fnc_addPlayerEventHandler;
+
+["vehicle", {call TFAR_fnc_updateSpeakersEnabled}] call CBA_fnc_addPlayerEventHandler;
 
 
 ["ACE_arsenal_displayOpened", {

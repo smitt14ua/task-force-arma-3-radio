@@ -37,10 +37,7 @@ private _hasSpeakersOn = {
 };
 
 //Flags tell other clients whether to look for speaker radios. Only broadcast on change.
-private _unitSpeakers = ((TFAR_currentUnit call TFAR_fnc_lrRadiosList) findIf _hasSpeakersOn) != -1;
-if !((TFAR_currentUnit getVariable ["TFAR_LRSpeakersEnabled", scriptNull]) isEqualTo _unitSpeakers) then {
-    TFAR_currentUnit setVariable ["TFAR_LRSpeakersEnabled", _unitSpeakers, true];
-};
+call TFAR_fnc_updateSpeakersEnabled;
 
 //A vehicle has several radios, a backpack only one
 private _objectRadios = [[_radio_object, _radio_qualifier]];
