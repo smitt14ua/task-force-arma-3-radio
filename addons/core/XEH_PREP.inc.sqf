@@ -171,6 +171,7 @@ PREP(getCurrentSwStereo);
 PREP(getCurrentLrStereo);
 PREP(getDefaultRadioClasses);
 PREP(getDefaultRadioSettings);
+PREP(watchProvisionalSettings);
 PREP(getRadioOwner);
 PREP(getSwSpeakers);
 PREP(getLrSpeakers);

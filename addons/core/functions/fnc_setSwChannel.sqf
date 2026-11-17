@@ -22,6 +22,7 @@
 params ["_radio_id", "_channel_to_set"];
 
 private _settings = _radio_id call TFAR_fnc_getSwSettings;
+if (isNil "_settings") exitWith {}; //No radio
 private _oldChannel = (_settings select ACTIVE_CHANNEL_OFFSET);
 _settings set [ACTIVE_CHANNEL_OFFSET, _channel_to_set];
 [_radio_id, _settings] call TFAR_fnc_setSwSettings;

@@ -220,7 +220,8 @@ if (player call TFAR_fnc_isForcedCurator) then {
     //The loadout event also fires on every shot (ammo count). Radios, backpacks and the vest (DD radio) are
     //all that matters here, so ignore changes that left them as they were.
     private _assignedItems = assignedItems TFAR_currentUnit;
-    private _items = [_assignedItems, items TFAR_currentUnit, backpack TFAR_currentUnit, vest TFAR_currentUnit];
+    //The backpack object, not its class: swapping LR backpacks of the same class changes the radio
+    private _items = [_assignedItems, items TFAR_currentUnit, backpackContainer TFAR_currentUnit, vest TFAR_currentUnit];
     if (_items isEqualTo (missionNamespace getVariable [QGVAR(loadoutItemsCache), []])) exitWith {};
     GVAR(loadoutItemsCache) = _items;
 

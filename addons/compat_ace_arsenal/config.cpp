@@ -8,6 +8,7 @@ class CfgPatches {
         weapons[] = {};
         requiredVersion = REQUIRED_VERSION;
         requiredAddons[] = {
+            "tfar_core",
             "tfar_external_intercom",
             "ace_arsenal"
         };

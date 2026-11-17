@@ -26,6 +26,8 @@ params ["_radio", "_channel", "_frequency", "_additional"];
 
 //The plugin ends whatever transmission is running on any RELEASED
 GVAR(tangentTransmission) = [];
+//A PRESSED right after this RELEASED has to wait, see TFAR_fnc_startTangentTransmission
+GVAR(lastTangentRelease) = diag_tickTime;
 
 ["OnBeforeTangent", [TFAR_currentUnit, _radio, 0, _additional, false]] call TFAR_fnc_fireEventHandlers;
 

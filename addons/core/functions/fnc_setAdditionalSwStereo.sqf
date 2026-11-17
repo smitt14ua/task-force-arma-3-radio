@@ -21,6 +21,7 @@
 params [["_radio", "", [""]], ["_value", 0, [0]]];
 
 private _settings = _radio call TFAR_fnc_getSwSettings;
+if (isNil "_settings") exitWith {}; //No radio
 _settings set [TFAR_ADDITIONAL_STEREO_OFFSET, _value];
 [_radio, _settings] call TFAR_fnc_setSwSettings;
 

@@ -40,6 +40,7 @@ if (!TFAR_oldVolumeHint && {!TFAR_ShowVolumeHUD}) then {
 if (!isNil QGVAR(speakVolumeForcedSpeechTime)) then {
     private _fnc_release = {
         ["",format["TANGENT	RELEASED	%1	%2	%3","directSpeechFreq", 0, "directSpeech"],0] call TFAR_fnc_processTangent;
+        GVAR(lastTangentRelease) = diag_tickTime; //See TFAR_fnc_startTangentTransmission
     };
     //The plugin processes the newest message first, a RELEASED sent in the same poll interval as the PRESSED
     //would be dropped before it. Delay it like TFAR_fnc_endTangentTransmission and block tangents meanwhile.

@@ -27,6 +27,7 @@ if !(GVAR(SettingsInitialized)) exitWith {
 };
 
 private _settings = _radio call TFAR_fnc_getSwSettings;
+if (isNil "_settings") exitWith {}; //No radio
 _settings set [RADIO_OWNER, _owner];
 [_radio, _settings, _local] call TFAR_fnc_setSwSettings;
 

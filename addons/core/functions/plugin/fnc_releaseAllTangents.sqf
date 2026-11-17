@@ -31,6 +31,9 @@ if (_unit isEqualTo TFAR_currentUnit) then {
     call TFAR_fnc_onAdditionalLRTangentReleased;
     //Transmission not started by a tangent keybinding
     [] call TFAR_fnc_endTangentTransmission;
+    //A held speak volume modifier (death, unit change: its key release can get lost) blocks the radio tangents
+    //while it forces direct speech, restore it
+    call TFAR_fnc_onSpeakVolumeModifierReleased;
 };
 
 "task_force_radio_pipe" callExtension (format ["RELEASE_ALL_TANGENTS	%1~", _unit getVariable ["TFAR_unitName", name _unit]]); //Async call will always return "OK"

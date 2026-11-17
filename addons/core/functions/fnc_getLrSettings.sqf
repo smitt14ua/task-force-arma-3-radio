@@ -51,15 +51,21 @@ if (_radio_object isKindOf "Bag_Base") then {
 
 private _provisional = false;
 if (isNil QGVAR(saved_active_lr_settings)) then {
-    _value = [false, TFAR_currentUnit, _radioType] call DFUNC(getDefaultRadioSettings);
-    _provisional = GVAR(defaultSettingsProvisional);
+    //Unscheduled, so no other call can change the flag in between
+    isNil {
+        _value = [false, TFAR_currentUnit, _radioType] call DFUNC(getDefaultRadioSettings);
+        _provisional = GVAR(defaultSettingsProvisional);
+    };
 } else {
     _value = +GVAR(saved_active_lr_settings);
     GVAR(saved_active_lr_settings) = nil;
 };
 
 //The side's frequencies didn't arrive from the server yet, don't store the provisional settings
-if (_provisional) exitWith {_value};
+if (_provisional) exitWith {
+    [false, [_radio_object, _radio_id], _value select 2] call TFAR_fnc_watchProvisionalSettings;
+    _value
+};
 
 [[_radio_object, _radio_id], + _value] call TFAR_fnc_setLrSettings;
 

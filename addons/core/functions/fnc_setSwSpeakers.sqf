@@ -21,6 +21,7 @@
 params ["_radio_id"];
 
 private _settings = _radio_id call TFAR_fnc_getSwSettings;
+if (isNil "_settings") exitWith {}; //No radio
 private _currentlyEnabled = _settings select TFAR_SW_SPEAKER_OFFSET;
 if (_currentlyEnabled) then {
     _settings set [TFAR_SW_SPEAKER_OFFSET, false];

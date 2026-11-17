@@ -26,6 +26,7 @@ if ((_radio_id call TFAR_fnc_getAdditionalSwChannel) == (_radio_id call TFAR_fnc
 };
 
 private _settings = _radio_id call TFAR_fnc_getSwSettings;
+if (isNil "_settings") exitWith {}; //No radio
 _settings set [TFAR_SW_STEREO_OFFSET, _value_to_set];
 [_radio_id, _settings] call TFAR_fnc_setSwSettings;
 

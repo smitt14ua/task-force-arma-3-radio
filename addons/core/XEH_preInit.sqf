@@ -206,7 +206,8 @@ GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are cu
             if (_channel < 0) exitWith {TF_tangent_sw_pressed = false;};
             private _frequency = [_radio, _channel + 1] call TFAR_fnc_getChannelFrequency;
             [_radio, _channel, _frequency, _isAdditional] call TFAR_fnc_doSRTransmit;
-        }, [_radio, _isAdditional], (missionNamespace getVariable ["TFAR_tangentReleaseDelay", 0]) / 1000 + 0.5] call CBA_fnc_waitAndExecute;
+        //The plugin also adds TeamSpeak's own PTT release delay, which the mod can't know: leave a second for it
+        }, [_radio, _isAdditional], (missionNamespace getVariable ["TFAR_tangentReleaseDelay", 0]) / 1000 + 1] call CBA_fnc_waitAndExecute;
     };
 }] call CBA_fnc_addEventHandler;
 
@@ -240,7 +241,8 @@ GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are cu
             if (_channel < 0) exitWith {TF_tangent_lr_pressed = false;};
             private _frequency = [_radio, _channel + 1] call TFAR_fnc_getChannelFrequency;
             [_radio, _channel, _frequency, _isAdditional] call TFAR_fnc_doLRTransmit;
-        }, [_radio, _isAdditional], (missionNamespace getVariable ["TFAR_tangentReleaseDelay", 0]) / 1000 + 0.5] call CBA_fnc_waitAndExecute;
+        //The plugin also adds TeamSpeak's own PTT release delay, which the mod can't know: leave a second for it
+        }, [_radio, _isAdditional], (missionNamespace getVariable ["TFAR_tangentReleaseDelay", 0]) / 1000 + 1] call CBA_fnc_waitAndExecute;
     };
 }] call CBA_fnc_addEventHandler;
 
