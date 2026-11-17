@@ -23,6 +23,14 @@ if (isDedicated) exitWith {
     ERROR("This function should never be called on a dedicated Server");
 };
 
+//Only one request at a time. The response carries no request ID, so a second request while one is pending
+//would make the first response be applied with the second request's radios. Give up waiting after 30 seconds.
+if (diag_tickTime - (missionNamespace getVariable [QGVAR(radioRequestPendingSince), -1000]) < 30) exitWith {
+    if (_this isEqualTo true) then { //Don't lose a request to replace instanced radios, retry once the pending one is done
+        [{diag_tickTime - (missionNamespace getVariable [QGVAR(radioRequestPendingSince), -1000]) >= 30}, {true call TFAR_fnc_requestRadios;}] call CBA_fnc_waitUntilAndExecute;
+    };
+};
+
 private _lastExec = GVAR(VehicleConfigCacheNamespace) getVariable "TFAR_fnc_requestRadios_lastExec";
 //If the loadout didn't change since last execute we don't need to check anything
 //Also if player is still in Arsenal don't replace anything
@@ -43,6 +51,7 @@ GVAR(lastRadioRequestEH_ID) = [
             // hintC _response; - takes STRING not ARRAY?
             call TFAR_fnc_hideHint;
             ["TFAR_RadioRequestResponseEvent", _thisId] call CBA_fnc_removeEventHandler;
+            GVAR(radioRequestPendingSince) = -1000;
             [[15, "radioRequest", round ((diag_tickTime-TFAR_beta_RadioRequestStart)*1000)]] call TFAR_fnc_betaTracker;//#TODO remove on release
         };
 
@@ -65,7 +74,7 @@ GVAR(lastRadioRequestEH_ID) = [
 
             if (_newID > 0) then {
                 if (_oldItem == "ItemRadio") then {
-                    _oldItem = (TFAR_currentUnit call TFAR_fnc_getDefaultRadioClasses) param [[2, 1] select ((TFAR_givePersonalRadioToRegularSoldier) || {leader _requestedUnit == _requestedUnit} || {rankId _requestedUnit >= 2}), ""];
+                    _oldItem = (_requestedUnit call TFAR_fnc_getDefaultRadioClasses) param [[2, 1] select ((TFAR_givePersonalRadioToRegularSoldier) ||{leader _requestedUnit == _requestedUnit} || {rankId _requestedUnit >= 2}), ""];
                 };
                 private _newItem = format["%1_%2", [_oldItem, "tf_parent", "TFAR global default radio setting configured incorrectly"] call DFUNC(getWeaponConfigProperty), _newID];
 
@@ -93,7 +102,7 @@ GVAR(lastRadioRequestEH_ID) = [
             _requestedUnit removeItem _oldItem;
 
             if (_oldItem == "ItemRadio") then {
-                _oldItem = (TFAR_currentUnit call TFAR_fnc_getDefaultRadioClasses) param [[2, 1] select ((TFAR_givePersonalRadioToRegularSoldier) or {leader _requestedUnit == _requestedUnit} or {rankId _requestedUnit >= 2}), ""];
+                _oldItem = (_requestedUnit call TFAR_fnc_getDefaultRadioClasses) param [[2, 1] select ((TFAR_givePersonalRadioToRegularSoldier) or{leader _requestedUnit == _requestedUnit} or {rankId _requestedUnit >= 2}), ""];
             };
 
             private _newItem = format["%1_%2", [_oldItem, "tf_parent", "TFAR global default radio setting configured incorrectly"] call DFUNC(getWeaponConfigProperty), _newID];
@@ -115,6 +124,8 @@ GVAR(lastRadioRequestEH_ID) = [
 
         call TFAR_fnc_hideHint;
 
+        GVAR(radioRequestPendingSince) = -1000;
+
         ["OnRadiosReceived", [_requestedUnit, _newRadios]] call TFAR_fnc_fireEventHandlers;
 
         ["TFAR_RadioRequestResponseEvent", _thisId] call CBA_fnc_removeEventHandler;
@@ -127,5 +138,6 @@ GVAR(lastRadioRequestEH_ID) = [
 TFAR_beta_RadioRequestStart = diag_tickTime;//#TODO remove on release
 //Send request
 diag_log ["TFAR_SendRadioRequest", _radiosToRequest, TF_respawnedAt,time];
+GVAR(radioRequestPendingSince) = diag_tickTime;
 ["TFAR_RadioRequestEvent", [_radiosToRequest,TFAR_currentUnit]] call CBA_fnc_serverEvent;
 //MUTEX_UNLOCK(TF_radio_request_mutex);

@@ -44,12 +44,14 @@ _corpse setVariable ["TFAR_forceSpectator", false, true];
 
         private _items = backpackItems TFAR_currentUnit;
         private _backPack = unitBackpack TFAR_currentUnit;
-        private _newItems = [];
 
         TFAR_currentUnit action ["putbag", TFAR_currentUnit];
         //In my tests in editor it took 0.89 seconds till the backpack is down
+        //Times out if the bag can't be put down (e.g. inside a vehicle)
         [{backpack TFAR_currentUnit == ""},
         {
+            params ["_items", "_backPack"];
+            private _newItems = [];
             TFAR_currentUnit addBackpack ((TFAR_currentUnit call TFAR_fnc_getDefaultRadioClasses) select 0);
             {
                 if (TFAR_currentUnit canAddItemToBackpack _x) then {
@@ -64,15 +66,22 @@ _corpse setVariable ["TFAR_forceSpectator", false, true];
             clearMagazineCargoGlobal _backPack;
             clearWeaponCargoGlobal _backPack;
             {
-                if (isClass (configFile >> "CfgMagazines" >> _x)) then{
+                if (isClass (configFile >> "CfgMagazines" >> _x)) then {
                     _backPack addMagazineCargoGlobal [_x, 1];
                 } else {
-                    _backPack addItemCargoGlobal [_x, 1];
-                    _backPack addWeaponCargoGlobal [_x, 1];
+                    if (isClass (configFile >> "CfgVehicles" >> _x)) then {
+                        _backPack addBackpackCargoGlobal [_x, 1];
+                    } else {
+                        if ((_x call BIS_fnc_itemType) select 0 == "Weapon") then {
+                            _backPack addWeaponCargoGlobal [_x, 1];
+                        } else {
+                            _backPack addItemCargoGlobal [_x, 1];
+                        };
+                    };
                 };
                 true;
             } count _newItems;
-        }] call CBA_fnc_waitUntilAndExecute;
+        }, [_items, _backPack], 10] call CBA_fnc_waitUntilAndExecute;
     };
     [TFAR_currentUnit, false] call TFAR_fnc_forceSpectator;
     if (TFAR_ShowVolumeHUD) then { //#TODO should really move this into a macro

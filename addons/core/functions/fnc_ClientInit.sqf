@@ -99,22 +99,22 @@ if (player call TFAR_fnc_isForcedCurator) then {
         params ["_player","_radio"];
         private _settings = _radio call TFAR_fnc_getLrSettings;
         if (isNil "_settings") exitWith {};
-        switch (_radio select 0) do {
+        private _frequenciesVariable = switch (_radio select 0) do {
             case TF_curator_backpack_1:{
-                if (!isNil "TFAR_defaultFrequencies_lr_west") then {
-                    _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_lr_west];
-                };
+                //Side specific curators only get backpack_1, which is the radio of their own side
+                ["TFAR_defaultFrequencies_lr_west", "TFAR_defaultFrequencies_lr_east", "TFAR_defaultFrequencies_lr_independent"] select ((["O_VirtualCurator_F", "I_VirtualCurator_F"] find (typeOf player)) + 1)
             };
-            case TF_curator_backpack_2:{
-                if (!isNil "TFAR_defaultFrequencies_lr_east") then {
-                    _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_lr_east];
-                };
+            case (missionNamespace getVariable ["TF_curator_backpack_2", objNull]):{
+                "TFAR_defaultFrequencies_lr_east"
             };
-            case TF_curator_backpack_3:{
-                if (!isNil "TFAR_defaultFrequencies_lr_independent") then {
-                    _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_lr_independent];
-                };
+            case (missionNamespace getVariable ["TF_curator_backpack_3", objNull]):{
+                "TFAR_defaultFrequencies_lr_independent"
             };
+            default {""};
+        };
+        private _frequencies = missionNamespace getVariable _frequenciesVariable;
+        if (!isNil "_frequencies") then {
+            _settings set [TFAR_FREQ_OFFSET, _frequencies];
         };
         [_radio, _settings] call TFAR_fnc_setLrSettings;
     }, player] call TFAR_fnc_addEventHandler;
@@ -123,29 +123,29 @@ if (player call TFAR_fnc_isForcedCurator) then {
     ["CuratorFrequencyHandler", "OnRadiosReceived", {
         params ["_player","_radios"];
         {
-            _radioClass = [_x, "tf_parent", ""] call DFUNC(getWeaponConfigProperty);
+            private _radioClass = [_x, "tf_parent", ""] call DFUNC(getWeaponConfigProperty);
             private _settings = _x call TFAR_fnc_getSwSettings;
-            if (isNil "_settings") exitWith {};
-            switch (toLower _radioClass) do {
-                case (toLower TFAR_DefaultRadio_Personal_West):{
-                    if (!isNil "TFAR_defaultFrequencies_sr_west") then {
-                        _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_sr_west];
+            if (!isNil "_settings") then {
+                switch (toLower _radioClass) do {
+                    case (toLower TFAR_DefaultRadio_Personal_West):{
+                        if (!isNil "TFAR_defaultFrequencies_sr_west") then {
+                            _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_sr_west];
+                        };
+                    };
+                    case (toLower TFAR_DefaultRadio_Personal_East):{
+                        if (!isNil "TFAR_defaultFrequencies_sr_east") then {
+                            _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_sr_east];
+                        };
+                    };
+                    case (toLower TFAR_DefaultRadio_Personal_Independent):{
+                        if (!isNil "TFAR_defaultFrequencies_sr_independent") then {
+                            _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_sr_independent];
+                        };
                     };
                 };
-                case (toLower TFAR_DefaultRadio_Personal_East):{
-                    if (!isNil "TFAR_defaultFrequencies_sr_east") then {
-                        _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_sr_east];
-                    };
-                };
-                case (toLower TFAR_DefaultRadio_Personal_Independent):{
-                    if (!isNil "TFAR_defaultFrequencies_sr_independent") then {
-                        _settings set [TFAR_FREQ_OFFSET,TFAR_defaultFrequencies_sr_independent];
-                    };
-                };
+                [_x, _settings] call TFAR_fnc_setSwSettings;
             };
-            [_x, _settings] call TFAR_fnc_setSwSettings;
-            true
-        } count _radios;
+        } forEach _radios;
     }, player] call TFAR_fnc_addEventHandler;
 
 };
@@ -162,8 +162,10 @@ if (player call TFAR_fnc_isForcedCurator) then {
         player setVariable ["TFAR_controlledUnit", nil, true];
     };
 
-    // Release pressed tangents as old unit
-    _oldUnit call TFAR_fnc_releaseAllTangents;
+    // Release pressed tangents as old unit (objNull on the retroactive first call)
+    if (!isNull _oldUnit) then {
+        _oldUnit call TFAR_fnc_releaseAllTangents;
+    };
 
     // Needs to be assigned between the tangent releases
     TFAR_currentUnit = _newUnit;

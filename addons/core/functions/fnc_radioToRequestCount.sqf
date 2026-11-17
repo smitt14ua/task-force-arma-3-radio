@@ -56,10 +56,16 @@ TFAR_core_cacheNonRadioItems append (_inputItems - _radiosToRequest);
 private _linkFirstItem = !(_radiosToRequest isEqualTo []);
 
 //could use CBA_fnc_uniqueUnitItems here but we don't want assignedItems
-private _allItems = ((getItemCargo (uniformContainer TFAR_currentUnit)) select 0);
-_allItems append ((getItemCargo (vestContainer TFAR_currentUnit)) select 0);
-_allItems append ((getItemCargo (backpackContainer TFAR_currentUnit)) select 0);
-
-_radiosToRequest append (_allItems select _radioSelector);
+//getItemCargo lists every class once, request one radio per item in the stack
+{
+    (getItemCargo _x) params [["_classes", []], ["_counts", []]];
+    {
+        if (call _radioSelector) then {
+            for "_i" from 1 to (_counts select _forEachIndex) do {
+                _radiosToRequest pushBack _x;
+            };
+        };
+    } forEach _classes;
+} forEach [uniformContainer TFAR_currentUnit, vestContainer TFAR_currentUnit, backpackContainer TFAR_currentUnit];
 
 [_radiosToRequest, _settingsToCopy, _linkFirstItem]

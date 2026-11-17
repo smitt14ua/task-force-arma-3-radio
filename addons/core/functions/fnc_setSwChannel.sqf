@@ -8,7 +8,7 @@
 
   Arguments:
     0: Radio classname <STRING>
-    1: Channel <STRING>
+    1: 0-based Channel number <NUMBER>
 
   Return Value:
     None

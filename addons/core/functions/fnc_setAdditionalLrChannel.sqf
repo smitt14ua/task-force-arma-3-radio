@@ -4,7 +4,9 @@
   Name: TFAR_fnc_setAdditionalLrChannel
 
   Author: NKey
-    Sets the radio to the passed channel or disables it (if current additional passed).
+    Sets the additional channel of the radio to the passed channel.
+    Toggles: if the passed channel already is the additional channel, the additional channel is disabled (-1).
+    The OnLRchannelSet event reports the stored channel (-1 when disabled).
 
   Arguments:
     0: LR Radio <ARRAY>
@@ -31,4 +33,4 @@ if ((_settings select TFAR_ADDITIONAL_CHANNEL_OFFSET) != _value) then {
 [_radio, _settings] call TFAR_fnc_setLrSettings;
 
 //							unit, radio object,		radio ID			channel, additional, oldChannel
-["OnLRchannelSet", [TFAR_currentUnit, _radio_object, _radio_qualifier, _value, true, _oldChannel]] call TFAR_fnc_fireEventHandlers;
+["OnLRchannelSet", [TFAR_currentUnit, _radio_object, _radio_qualifier, _settings select TFAR_ADDITIONAL_CHANNEL_OFFSET, true, _oldChannel]] call TFAR_fnc_fireEventHandlers;

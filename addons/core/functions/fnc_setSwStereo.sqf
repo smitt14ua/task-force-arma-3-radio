@@ -11,7 +11,7 @@
     1: Stereo Range (0,2) (0 - Both, 1 - Left, 2 - Right) <NUMBER>
 
   Return Value:
-    return name <TYPENAME>
+    None
 
   Example:
     [call TFAR_fnc_activeSWRadio, 2] call TFAR_fnc_setSwStereo;

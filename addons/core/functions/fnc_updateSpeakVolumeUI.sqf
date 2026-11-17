@@ -18,8 +18,8 @@
   Public: Yes
 */
 
-_icon = "";
-_display = uiNamespace getVariable [QGVAR(HUDVolumeIndicatorRscDisplay),displayNull];
+private _icon = "";
+private _display = uiNamespace getVariable [QGVAR(HUDVolumeIndicatorRscDisplay),displayNull];
 if (isNull _display) exitWith {};
 
 if (TF_speak_volume_level == "yelling") then {

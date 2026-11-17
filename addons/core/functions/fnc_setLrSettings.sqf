@@ -7,15 +7,14 @@
     Saves the settings for the passed radio and broadcasts it to all clients and the server.
 
   Arguments:
-    0: Radio object <OBJECT>
-    1: Radio ID <STRING>
-    2: Settings, usually acquired via TFAR_fnc_getLrSettings and then changed. <ARRAY>
+    0: LR Radio [radio object, radio ID] <ARRAY>
+    1: Settings, usually acquired via TFAR_fnc_getLrSettings and then changed. <ARRAY>
 
   Return Value:
     None
 
   Example:
-    _settings = (call TFAR_fnc_activeLrRadio) call TFAR_fnc_getSwSettings;
+    _settings = (call TFAR_fnc_activeLrRadio) call TFAR_fnc_getLrSettings;
     _settings set [0, 2]; // sets the active channel to 2
     [call TFAR_fnc_activeLrRadio, _settings] call TFAR_fnc_setLrSettings;
 
