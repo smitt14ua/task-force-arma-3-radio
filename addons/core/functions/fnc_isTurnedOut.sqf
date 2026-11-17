@@ -10,20 +10,21 @@
     Checks whether a unit is attenuated, meaning in another compartment outside of outside voice range.
 
   Arguments:
-    _unit - Unit to check <OBJECT>
+    0: Unit to check <OBJECT>
 
   Return Value:
-    [isTurnedOut, attenuation] <ARRAY of BOOLs>
+    0: isTurnedOut <BOOL>
+    1: isolation amount <NUMBER> (only meaningful if not turned out; otherwise an internal reason code)
 
   Example:
-    if ([player] call TFAR_fnc_isAttenuated) then {
+    if !(([player] call TFAR_fnc_isTurnedOut) select 0) then {
         player sideChat "I cant hear you outside guy!";
     };
 
   Config & Variable API:
     Example:
         Config: CBA_attenuatedRoles[] = {{"driver", -1, "ani_window_1"}, {"turret", {0}, "ani_window_2"}, {"gunner", -1, "ani_window_4"}};
-        Variable:  _vehicle setVariable ["CBA_attenuatedRoles", ["driver", -1, "ani_window_1"]];
+        Variable:  _vehicle setVariable ["CBA_attenuatedRoles", [["driver", -1, "ani_window_1"]]];
     Attributes
         role
         cargoindex or turretPath
@@ -88,14 +89,16 @@ if (!(_enabledAnim isEqualTo "") && {(_vehicle animationSourcePhase _enabledAnim
 };
 
 // API
-private _attenuationAPI = _vehicle getVariable ["CBA_attenuatedRoles", []];
+// copy, so the array stored in the vehicle variable doesn't grow on every call
+private _attenuationAPI = +(_vehicle getVariable ["CBA_attenuatedRoles", []]);
 _attenuationAPI append (getArray (_config >> "CBA_attenuatedRoles"));
 
 if !(_attenuationAPI isEqualTo []) then {
     {
-        _x params [["_configRole", "", [""]], ["_cargoOrTurretIndex", -1, [0]], ["_animation", "", [""]]];
-        
-        if (_configRole == _role && {_cargoOrTurretIndex isEqualTo _cargoIndex || _cargoOrTurretIndex isEqualTo _turretPath}) exitWith {
+        // second entry is a cargo index <NUMBER> or a turret path <ARRAY>
+        _x params [["_configRole", "", [""]], ["_cargoOrTurretIndex", -1, [0, []]], ["_animation", "", [""]]];
+
+        if (_configRole == _role && {_cargoOrTurretIndex isEqualTo ([_cargoIndex, _turretPath] select (_cargoOrTurretIndex isEqualType []))}) exitWith {
             _return = if !(_animation isEqualTo "") then {
                 !((_vehicle animationSourcePhase _animation) > 0)
             } else {
@@ -133,8 +136,5 @@ if (_role isEqualTo "cargo") exitWith {
     }
 
 };
-
-// Specialcase
-if (_role isEqualTo "gunner") exitWith {[true, call _fnc_getAttenuationFromEffect]}; // return
 
 [false, call _fnc_getAttenuationFromEffect]

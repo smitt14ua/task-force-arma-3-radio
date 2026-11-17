@@ -23,20 +23,23 @@
 
 params ["_side", "_radioType"];
 
-if (_side == independent) then { // hotfix, we want "independent" instead of "guer"
-    _side = "Independent";
+// default radios only exist for West, East and Independent; every other side uses the Independent ones
+_side = switch (_side) do {
+    case west: {"West"};
+    case east: {"East"};
+    default {"Independent"};
 };
 
 private _result = "";
 switch (_radioType) do {
     case 0: {
-        _result = missionNamespace getVariable format["TFAR_DefaultRadio_%1_%2","Backpack",_side];
+        _result = missionNamespace getVariable [format["TFAR_DefaultRadio_%1_%2","Backpack",_side], ""];
     };
     case 1: {
-        _result = missionNamespace getVariable format["TFAR_DefaultRadio_%1_%2","Personal",_side];
+        _result = missionNamespace getVariable [format["TFAR_DefaultRadio_%1_%2","Personal",_side], ""];
     };
     case 2: {
-        _result = missionNamespace getVariable format["TFAR_DefaultRadio_%1_%2","Rifleman",_side];
+        _result = missionNamespace getVariable [format["TFAR_DefaultRadio_%1_%2","Rifleman",_side], ""];
     };
 };
 

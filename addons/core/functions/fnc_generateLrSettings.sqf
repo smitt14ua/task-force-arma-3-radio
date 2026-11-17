@@ -18,7 +18,7 @@
     5: Additional active channel <NUMBER>
     6: Additional active channel stereo mode <NUMBER>
     7: Empty <NIL>
-    8: Speaker mode <NUMBER>
+    8: Speaker mode <BOOL>
     9: turned on <BOOL>
     10: Additional channel volume <NUMBER>
 
@@ -34,7 +34,7 @@ params [["_generateFrequencies", true, [true]]];
 private _lr_settings = [0, TFAR_default_radioVolume, [], 0, nil, -1, 0, nil, false, true];
 private _lr_frequencies = [];
 if (!_generateFrequencies) then {
-    for "_i" from 0 to TFAR_MAX_LR_CHANNELS step 1 do {
+    for "_i" from 0 to (TFAR_MAX_LR_CHANNELS - 1) step 1 do {
         _lr_frequencies set [_i, "50"];
     };
 } else {

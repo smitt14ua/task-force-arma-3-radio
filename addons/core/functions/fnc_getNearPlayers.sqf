@@ -21,7 +21,10 @@
 if ((!alive TFAR_currentUnit) && {!(TFAR_currentUnit getVariable ["TFAR_forceSpectator",false])}) exitWith {[]};
 
 private _unitsInPlayerGroup = units TFAR_currentUnit;
-private _allUnits = (TFAR_currentUnit nearEntities ["Man", TF_max_voice_volume+40]);//+40 because he won't be updated fast enough when coming into region
+//+40 because he won't be updated fast enough when coming into region
+private _nearEntities = TFAR_currentUnit nearEntities [["Man", "LandVehicle", "Air", "Ship"], TF_max_voice_volume+40];
+private _allUnits = _nearEntities select {_x isKindOf "Man"};
+private _nearVehicles = _nearEntities - _allUnits;
 
 //Some missions might have everyone in the same group. In that case we don't want to flood nearPlayers
 if (count _unitsInPlayerGroup < 10) then {
@@ -32,7 +35,7 @@ _allUnits pushBackUnique TFAR_currentUnit;//Will be duplicate in normal play but
 
 {
     _allUnits append (crew _x);
-} forEach (TFAR_currentUnit nearEntities [["LandVehicle", "Air", "Ship"], TF_max_voice_volume+40]);
+} forEach _nearVehicles;
 
 
 //We have duplicates in here. But fnc_processPlayerPositions takes care of them.

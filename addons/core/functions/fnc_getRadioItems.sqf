@@ -25,8 +25,9 @@ params [
 ];
 
 private _allItems = (assignedItems _unit);
-_allItems append ((getItemCargo (uniformContainer _unit)) select 0);
-_allItems append ((getItemCargo (vestContainer _unit)) select 0);
+// uniformItems/vestItems keep duplicates (getItemCargo select 0 is already unique)
+_allItems append (uniformItems _unit);
+_allItems append (vestItems _unit);
 
 If (_withOutDuplicates) then {
     _allItems = _allItems arrayIntersect _allItems;

@@ -21,11 +21,16 @@
   Public: Yes
 */
 
-params ["_item", "_property", ["_default", ""]];
+params [["_item", "", [""]], ["_property", "", [""]], ["_default", ""]];
 
-private _cacheName = (_item + _property);
+if (_item isEqualTo "") exitWith {_default};
+
+//A missing property is cached as configNull, so every caller gets its own default
+private _cacheName = _item + "|" + _property;
 private _cachedEntry = GVAR(WeaponConfigCacheNamespace) getVariable _cacheName;
-if (!isNil "_cachedEntry") exitWith {_cachedEntry};
+if (!isNil "_cachedEntry") exitWith {
+    if (_cachedEntry isEqualType configNull) then {_default} else {_cachedEntry}
+};
 
 private _cfgProperty = (configFile >> "CfgWeapons" >> _item >> _property);
 
@@ -47,6 +52,6 @@ if (isArray _cfgProperty) exitWith {
     _value;
 };
 
-GVAR(WeaponConfigCacheNamespace) setVariable [_cacheName,_default];
+GVAR(WeaponConfigCacheNamespace) setVariable [_cacheName,configNull];
 
 _default

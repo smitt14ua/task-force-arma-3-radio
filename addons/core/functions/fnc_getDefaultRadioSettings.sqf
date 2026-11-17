@@ -50,6 +50,8 @@ if (_isSR) then {
                 +(missionNamespace getVariable "TFAR_freq_sr_independent");
             };
         };
+        // the side settings were generated on the server, so they carry the server's owner UID
+        _return set [RADIO_OWNER, getPlayerUID player];
     } else {
         if (isNil "_frequencies") then {
             _return = true call DFUNC(generateSRSettings);

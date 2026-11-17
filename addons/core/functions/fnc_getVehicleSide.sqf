@@ -24,6 +24,11 @@ private _side = _vehicle getVariable "tf_side";
 
 if (isNil "_side") exitWith {[getNumber(configFile >> "CfgVehicles" >> (typeOf _vehicle) >> "side")] call BIS_fnc_sideType};
 
+// tf_side may also be set as a side value
+if (_side isEqualType sideUnknown) exitWith {
+    [independent, _side] select (_side in [west, east])
+};
+
 if (_side == "west") exitWith {west};
 if (_side == "east") exitWith {east};
 
