@@ -50,4 +50,6 @@ private _definitionIndex = _frequencyNames findIf {
 
 if (_definitionIndex < 0) exitWith {""};
 
-((_frequencyNames select _definitionIndex) param [1, "", [""]]) select [0, TFAR_MAX_CHANNEL_NAME_LENGTH]
+private _name = (_frequencyNames select _definitionIndex) param [1, "", [""]];
+forceUnicode 1; //cut by characters, not bytes, or Cyrillic names break in half
+_name select [0, TFAR_MAX_CHANNEL_NAME_LENGTH]

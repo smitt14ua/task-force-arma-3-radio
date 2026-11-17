@@ -20,6 +20,8 @@
 */
 private _old = TF_lr_active_radio;
 TF_lr_active_radio = _this;
+//Selected for the current unit, so TFAR_fnc_activeLrRadio must not reset it as a unit change
+TFAR_activeLrRadioUnit = TFAR_currentUnit;
 //TF_lr_active_curator_radio is not read anywhere in TFAR, kept for third party scripts
 if (TFAR_currentUnit == player) then {
     TF_lr_active_curator_radio = _this;

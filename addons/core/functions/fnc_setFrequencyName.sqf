@@ -38,6 +38,7 @@ if (!isServer || {!(_side in [west, east, independent])}) exitWith {false};
 private _frequencyString = [_frequency, _isLrRadio] call TFAR_fnc_normalizeFrequency;
 if (_frequencyString isEqualTo "") exitWith {false};
 
+forceUnicode 1; //cut by characters, not bytes, or Cyrillic names break in half
 _name = _name select [0, TFAR_MAX_CHANNEL_NAME_LENGTH];
 
 private _radioType = ["sr", "lr"] select _isLrRadio;

@@ -21,7 +21,9 @@
 
 params [["_unit", objNull, [objNull]], ["_isReceiving", false, [true]]];
 
-if (!_isReceiving || {!local _unit} || {!alive _unit}) exitWith {};
+// _unit is usually a remote player: the plugin reports which nearby players receive on speakers,
+// so no locality check here (revealInArea throttles per AI unit)
+if (!_isReceiving || {!alive _unit}) exitWith {};
 
 if ((_unit getVariable ["TFAR_LRSpeakersEnabled", false]) || {_unit getVariable ["TFAR_SRSpeakersEnabled", false]}) exitWith {
     [_unit, TF_speakerDistance] call FUNC(revealInArea);

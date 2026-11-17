@@ -201,6 +201,15 @@ if (player call TFAR_fnc_isForcedCurator) then {
         TFAR_currentUnit setVariable ["TFAR_HandlersSet", true];
     };
 
+    // Let every client's plugin know when this unit dies. addMPEventHandler has global effect (and is JIP queued),
+    // so only the machine controlling the unit adds it, once; the flag is public so a later controller won't add it again.
+    if !(TFAR_currentUnit getVariable ["TFAR_killedMPEHAttached", false]) then {
+        TFAR_currentUnit addMPEventHandler ["MPKilled", {
+            if (hasInterface && {!isNil "TFAR_currentUnit"}) then {(_this select 0) call TFAR_fnc_sendPlayerKilled};
+        }];
+        TFAR_currentUnit setVariable ["TFAR_killedMPEHAttached", true, true];
+    };
+
 },true] call CBA_fnc_addPlayerEventHandler;
 
 ["loadout", {
@@ -214,8 +223,15 @@ if (player call TFAR_fnc_isForcedCurator) then {
 
     TFAR_core_assignedItemsCache = assignedItems TFAR_currentUnit;
 
-    //A picked up radio can already have its speakers on
-    call TFAR_fnc_updateSpeakersEnabled;
+    //A picked up radio can already have its speakers on. The loadout event also fires on every shot
+    //(ammo count), so recalculate at most once per second instead of scanning the inventory each time.
+    if (isNil QGVAR(speakersUpdatePending)) then {
+        GVAR(speakersUpdatePending) = true;
+        [{
+            GVAR(speakersUpdatePending) = nil;
+            call TFAR_fnc_updateSpeakersEnabled;
+        }, [], 1] call CBA_fnc_waitAndExecute;
+    };
 },true] call CBA_fnc_addPlayerEventHandler;
 
 ["vehicle", {call TFAR_fnc_updateSpeakersEnabled}] call CBA_fnc_addPlayerEventHandler;

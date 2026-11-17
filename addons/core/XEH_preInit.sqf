@@ -184,8 +184,18 @@ GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are cu
 
         //Additional channel disabled, the additional tangent release can't end the transmission anymore
         if (_newChannel < 0) exitWith {TF_tangent_sw_pressed = false;};
-        private _newFrequency = [_radio, _newChannel + 1] call TFAR_fnc_getChannelFrequency;
-        [_radio, _newChannel, _newFrequency, _isAdditional] call TFAR_fnc_doSRTransmit;
+        //The plugin drops a PRESSED that arrives while it still delays the RELEASED (TeamSpeak PTT delay +
+        //tangentReleaseDelay), so the new frequency would never be broadcast. Press again once that is over.
+        [{
+            params ["_radio", "_isAdditional"];
+            //Tangent released (or taken over by the other tangent) meanwhile
+            if !(TF_tangent_sw_pressed && {TF_tangent_sw_additional isEqualTo _isAdditional}) exitWith {};
+            if ([_radio, _isAdditional] in GVAR(currentTransmittingRadio)) exitWith {};
+            private _channel = if (_isAdditional) then {_radio call TFAR_fnc_getAdditionalSwChannel} else {_radio call TFAR_fnc_getSwChannel};
+            if (_channel < 0) exitWith {TF_tangent_sw_pressed = false;};
+            private _frequency = [_radio, _channel + 1] call TFAR_fnc_getChannelFrequency;
+            [_radio, _channel, _frequency, _isAdditional] call TFAR_fnc_doSRTransmit;
+        }, [_radio, _isAdditional], (missionNamespace getVariable ["TFAR_tangentReleaseDelay", 0]) / 1000 + 0.5] call CBA_fnc_waitAndExecute;
     };
 }] call CBA_fnc_addEventHandler;
 
@@ -204,8 +214,16 @@ GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are cu
 
         //Additional channel disabled, the additional tangent release can't end the transmission anymore
         if (_newChannel < 0) exitWith {TF_tangent_lr_pressed = false;};
-        private _newFrequency = [_radio, _newChannel + 1] call TFAR_fnc_getChannelFrequency;
-        [_radio, _newChannel, _newFrequency, _isAdditional] call TFAR_fnc_doLRTransmit;
+        //See the SW handler: the plugin drops a PRESSED during its delayed RELEASED, so press again afterwards
+        [{
+            params ["_radio", "_isAdditional"];
+            if !(TF_tangent_lr_pressed && {TF_tangent_lr_additional isEqualTo _isAdditional}) exitWith {};
+            if ([_radio, _isAdditional] in GVAR(currentTransmittingRadio)) exitWith {};
+            private _channel = if (_isAdditional) then {_radio call TFAR_fnc_getAdditionalLrChannel} else {_radio call TFAR_fnc_getLrChannel};
+            if (_channel < 0) exitWith {TF_tangent_lr_pressed = false;};
+            private _frequency = [_radio, _channel + 1] call TFAR_fnc_getChannelFrequency;
+            [_radio, _channel, _frequency, _isAdditional] call TFAR_fnc_doLRTransmit;
+        }, [_radio, _isAdditional], (missionNamespace getVariable ["TFAR_tangentReleaseDelay", 0]) / 1000 + 0.5] call CBA_fnc_waitAndExecute;
     };
 }] call CBA_fnc_addEventHandler;
 

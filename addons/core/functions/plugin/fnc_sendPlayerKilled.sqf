@@ -26,5 +26,7 @@ if (_this isEqualTo TFAR_currentUnit) then {
     _this call TFAR_fnc_releaseAllTangents;
 };
 
-private _request = format["KILLED	%1~", (_this getVariable ["TFAR_unitName", name _this])];//Async call will always return "OK"
+private _name = _this getVariable ["TFAR_pluginUnitName", ""];
+if (_name isEqualTo "") then {_name = _this getVariable ["TFAR_unitName", name _this]};
+private _request = format["KILLED	%1~", _name];//Async call will always return "OK"
 private _result = "task_force_radio_pipe" callExtension _request;

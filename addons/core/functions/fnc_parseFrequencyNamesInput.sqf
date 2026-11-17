@@ -48,6 +48,7 @@ private _definitions = [];
             _frequencyString isNotEqualTo "" &&
             {_name isNotEqualTo ""}
         ) then {
+            forceUnicode 1; //cut by characters, not bytes, or Cyrillic names break in half
             _name = _name select [0, TFAR_MAX_CHANNEL_NAME_LENGTH];
             private _definitionIndex = _definitions findIf {
                 (_x select 0) isEqualTo _frequencyString

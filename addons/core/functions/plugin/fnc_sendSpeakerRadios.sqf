@@ -95,5 +95,12 @@ private _empty = _speakerRadios isEqualTo [];
 if (!(missionnamespace getVariable ["TFAR_hadSpeakers",false]) && _empty) exitWith {};
 TFAR_hadSpeakers = !_empty;
 
-"task_force_radio_pipe" callExtension format["SPEAKERS	%1~",_speakerRadios joinString TF_vertical_tab];//Async call will always return "OK"
+//The extension rejects messages over 2040 bytes (with a blocking message box) and the plugin replaces the whole
+//speaker list on every SPEAKERS message, so drop the last records instead of sending something too big
+private _message = format["SPEAKERS	%1~",_speakerRadios joinString TF_vertical_tab];
+while {count _message > 2000 && {_speakerRadios isNotEqualTo []}} do {
+    _speakerRadios deleteAt (count _speakerRadios - 1);
+    _message = format["SPEAKERS	%1~",_speakerRadios joinString TF_vertical_tab];
+};
+"task_force_radio_pipe" callExtension _message;//Async call will always return "OK"
 TFAR_speakerRadios = [];

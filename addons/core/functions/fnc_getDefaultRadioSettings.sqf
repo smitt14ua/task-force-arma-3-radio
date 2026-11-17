@@ -51,7 +51,10 @@ if (_isSR) then {
             };
         };
         // the side settings were generated on the server, so they carry the server's owner UID
-        _return set [RADIO_OWNER, getPlayerUID player];
+        // (they can still be missing on a JIP client before the server's public variable arrived)
+        if (!isNil "_return") then {
+            _return set [RADIO_OWNER, getPlayerUID player];
+        };
     } else {
         if (isNil "_frequencies") then {
             _return = true call DFUNC(generateSRSettings);
