@@ -19,13 +19,8 @@
 */
 
 if (!TF_tangent_lr_pressed || {!TF_tangent_lr_additional}) exitWith {false};
-private _radio = call TFAR_fnc_activeLrRadio;
-
-private _additionalChannel = _radio call TFAR_fnc_getAdditionalLrChannel;
-if (_additionalChannel < 0) exitWith {false}; // No Additional Channel set
-private _currentFrequency = [_radio, _additionalChannel + 1] call TFAR_fnc_getChannelFrequency;
-
-[_radio, _additionalChannel, _currentFrequency, true] call TFAR_fnc_doLRTransmitEnd;
 
 TF_tangent_lr_pressed = false;
+//End what was pressed, the active radio, channel or frequency may have changed meanwhile
+[1] call TFAR_fnc_endTangentTransmission;
 false

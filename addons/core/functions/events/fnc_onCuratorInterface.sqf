@@ -21,8 +21,7 @@ params [["_display",displayNull],["_eventType","Close"]];
 
 switch _eventType do {
     case "Open": {
-        _display displayAddEventHandler ["KeyDown", "[_this, 'keydown'] call TFAR_fnc_processCuratorKey"];
-        _display displayAddEventHandler ["KeyUp", "[_this, 'keyup'] call TFAR_fnc_processCuratorKey"];
+        //CBA adds its keybinding handlers to the curator display itself
 
         if (player call TFAR_fnc_isForcedCurator) then {
             //Add PFH that moves curatorLogic's position to camera position,

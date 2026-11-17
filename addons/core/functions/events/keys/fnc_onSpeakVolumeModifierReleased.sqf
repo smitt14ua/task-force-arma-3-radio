@@ -31,20 +31,31 @@ TF_speak_volume_meters = TF_last_speak_volume_meters;
 */
 call TFAR_fnc_sendFrequencyInfo;
 
-if (TFAR_oldVolumeHint) then {
-    if (TFAR_volumeModifier_forceSpeech) then {
-        ["",format["TANGENT	RELEASED	%1	%2	%3","directSpeechFreq", 0, "directSpeech"],0] call TFAR_fnc_processTangent;
-    } else {
-        call TFAR_fnc_hideHint;
-    };
-} else {
-    call TFAR_fnc_hideHint;
-    if (!TFAR_ShowVolumeHUD) then {
-        (QGVAR(HUDVolumeIndicatorRsc) call BIS_fnc_rscLayer) cutText ["", "PLAIN"];
-    };
-    if (TFAR_volumeModifier_forceSpeech) then {
+//The old style hint is shown without timeout by the Pressed handler
+call TFAR_fnc_hideHint;
+if (!TFAR_oldVolumeHint && {!TFAR_ShowVolumeHUD}) then {
+    (QGVAR(HUDVolumeIndicatorRsc) call BIS_fnc_rscLayer) cutText ["", "PLAIN"];
+};
+
+if (!isNil QGVAR(speakVolumeForcedSpeechTime)) then {
+    private _fnc_release = {
         ["",format["TANGENT	RELEASED	%1	%2	%3","directSpeechFreq", 0, "directSpeech"],0] call TFAR_fnc_processTangent;
     };
+    //The plugin processes the newest message first, a RELEASED sent in the same poll interval as the PRESSED
+    //would be dropped before it. Delay it like TFAR_fnc_endTangentTransmission and block tangents meanwhile.
+    private _remaining = 0.06 - (diag_tickTime - GVAR(speakVolumeForcedSpeechTime));
+    GVAR(speakVolumeForcedSpeechTime) = nil;
+    if (_remaining <= 0) exitWith {call _fnc_release};
+
+    private _pending = [2, diag_tickTime];
+    GVAR(pendingTangentRelease) = _pending;
+    [{
+        params ["_pending", "_fnc_release"];
+        if ((missionNamespace getVariable [QGVAR(pendingTangentRelease), []]) isEqualTo _pending) then {
+            GVAR(pendingTangentRelease) = [];
+        };
+        call _fnc_release;
+    }, [_pending, _fnc_release], _remaining] call CBA_fnc_waitAndExecute;
 };
 
 call TFAR_fnc_updateSpeakVolumeUI;
