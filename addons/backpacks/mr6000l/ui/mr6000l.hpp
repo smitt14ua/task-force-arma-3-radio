@@ -90,11 +90,10 @@ class mr6000l_radio_dialog {
         tooltip = ECSTRING(core,current_freq);
         canModify = 1;
         TFAR_CHANNEL_NAME_EDIT_HANDLER(TF_lr_dialog_radio,LR_CHANNEL);
-        onKeyUp = QUOTE( \
+        onKeyUp = QUOTE(\
             if (_this select 1 in [ARR_2(28,156)]) then { \
                 [((ctrlParent (_this select 0))) displayCtrl IDC_MR6000L_EDIT] call TFAR_backpacks_fnc_onButtonClick_Enter; \
-            }; \
-        );
+            };);
     };
     class enter: HiddenButton {
         idc = IDC_MR6000L_ENTER;
@@ -148,11 +147,10 @@ class mr6000l_radio_dialog {
         y = "0.572604 * safezoneH + safezoneY";
         w = "0.0665527 * safezoneW";
         h = "0.110006 * safezoneH";
-        action = QUOTE( \
+        action = QUOTE(\
             playSound 'TFAR_rotatorPush'; \
-            [ARR_2(TF_lr_dialog_radio, ((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
-            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume; \
-        );
+            [ARR_2(TF_lr_dialog_radio,((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
+            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume;);
         tooltip = ECSTRING(core,stereo_settings);
     };
     class channel_01: HiddenButton {

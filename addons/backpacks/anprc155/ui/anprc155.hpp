@@ -66,11 +66,10 @@ class anprc155_radio_dialog {
         moving = 1;
         canModify = 1;
         TFAR_CHANNEL_NAME_EDIT_HANDLER(TF_lr_dialog_radio,LR_CHANNEL);
-        onKeyUp = QUOTE( \
+        onKeyUp = QUOTE(\
             if (_this select 1 in [ARR_2(28,156)]) then { \
                 [((ctrlParent (_this select 0))) displayCtrl IDC_ANPRC155_EDIT] call TFAR_backpacks_fnc_onButtonClick_Enter; \
-            }; \
-        );
+            };);
     };
     class enter: HiddenButton {
         idc = IDC_ANPRC155_ENTER;
@@ -124,10 +123,9 @@ class anprc155_radio_dialog {
         y = "0.5363 * safezoneH + safezoneY";
         w = "0.0180469 * safezoneW";
         h = "0.0275 * safezoneH";
-        action = QUOTE( \
-            [ARR_2(TF_lr_dialog_radio, ((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
-            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume; \
-        );
+        action = QUOTE(\
+            [ARR_2(TF_lr_dialog_radio,((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
+            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume;);
         tooltip = ECSTRING(core,stereo_settings);
     };
     class additional: HiddenButton {

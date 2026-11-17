@@ -89,11 +89,10 @@ class anarc210_radio_dialog {
         tooltip = ECSTRING(core,current_freq);
         canModify = 1;
         TFAR_CHANNEL_NAME_EDIT_HANDLER(TF_lr_dialog_radio,LR_CHANNEL);
-        onKeyUp = QUOTE( \
+        onKeyUp = QUOTE(\
             if (_this select 1 in [ARR_2(28,156)]) then { \
                 [((ctrlParent (_this select 0))) displayCtrl IDC_ANPRC210_EDIT] call TFAR_backpacks_fnc_onButtonClick_Enter; \
-            }; \
-        );
+            };);
     };
     class enter: HiddenButton {
         idc = IDC_ANPRC210_ENTER;
@@ -121,7 +120,7 @@ class anarc210_radio_dialog {
         w = "0.04 * safezoneW";
         h = "0.06 * safezoneH";
         tooltip = ECSTRING(core,rotator_volume);
-        onMouseButtonDown = QUOTE([ARR_2(_this select 1, true)] call TFAR_fnc_setVolumeViaDialog;);
+        onMouseButtonDown = QUOTE([ARR_2(_this select 1,true)] call TFAR_fnc_setVolumeViaDialog;);
     };
     class stereo: HiddenButton {
         idc = IDC_ANPRC210_STEREO;
@@ -129,10 +128,9 @@ class anarc210_radio_dialog {
         y = "0.5253 * safezoneH + safezoneY";
         w = "0.03 * safezoneW";
         h = "0.05 * safezoneH";
-        action = QUOTE( \
-            [ARR_2(TF_lr_dialog_radio, ((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
-            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume; \
-        );
+        action = QUOTE(\
+            [ARR_2(TF_lr_dialog_radio,((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
+            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume;);
         tooltip = ECSTRING(core,stereo_settings);
     };
     class channel_01: HiddenButton {

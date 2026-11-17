@@ -72,11 +72,10 @@ class anarc164_radio_dialog {
         tooltip = ECSTRING(core,current_freq);
         canModify = 1;
         TFAR_CHANNEL_NAME_EDIT_HANDLER(TF_lr_dialog_radio,LR_CHANNEL);
-        onKeyUp = QUOTE( \
+        onKeyUp = QUOTE(\
             if (_this select 1 in [ARR_2(28,156)]) then { \
                 [((ctrlParent (_this select 0))) displayCtrl IDC_ANARC164_EDIT] call TFAR_backpacks_fnc_onButtonClick_Enter; \
-            }; \
-        );
+            };);
     };
     class enter: HiddenRotator {
         idc = IDC_ANARC164_ENTER;
@@ -85,10 +84,9 @@ class anarc164_radio_dialog {
         w = "0.037125 * safezoneW";
         h = "0.0693 * safezoneH";
         tooltip = ECSTRING(core,set_frequency);
-        onButtonClick = QUOTE( \
+        onButtonClick = QUOTE(\
             playSound 'TFAR_rotatorPush'; \
-            [((ctrlParent (_this select 0))) displayCtrl IDC_ANARC164_EDIT] call TFAR_backpacks_fnc_onButtonClick_Enter; \
-        );
+            [((ctrlParent (_this select 0))) displayCtrl IDC_ANARC164_EDIT] call TFAR_backpacks_fnc_onButtonClick_Enter;);
         action = "";
     };
     class clear: HiddenRotator {
@@ -98,10 +96,9 @@ class anarc164_radio_dialog {
         w = "0.0376406 * safezoneW";
         h = "0.0715 * safezoneH";
         tooltip = ECSTRING(core,clear_frequency);
-        action = QUOTE( \
+        action = QUOTE(\
             playSound 'TFAR_rotatorPush'; \
-            [ARR_2((findDisplay IDD_ANARC164_RADIO_DIALOG) displayCtrl IDC_ANARC164_EDIT,LR_CHANNEL)] call TFAR_fnc_clearRadioDialogFrequency; \
-        );
+            [ARR_2((findDisplay IDD_ANARC164_RADIO_DIALOG) displayCtrl IDC_ANARC164_EDIT,LR_CHANNEL)] call TFAR_fnc_clearRadioDialogFrequency;);
     };
     class prev_channel: HiddenRotator {
         idc = IDC_ANARC164_PREV_CHANNEL;
@@ -127,11 +124,10 @@ class anarc164_radio_dialog {
         y = "0.566 * safezoneH + safezoneY";
         w = "0.0665527 * safezoneW";
         h = "0.110006 * safezoneH";
-        action = QUOTE( \
+        action = QUOTE(\
             playSound 'TFAR_rotatorPush'; \
-            [ARR_2(TF_lr_dialog_radio, ((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
-            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume; \
-        );
+            [ARR_2(TF_lr_dialog_radio,((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
+            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume;);
         tooltip = ECSTRING(core,stereo_settings);
     };
     class additional: HiddenRotator {

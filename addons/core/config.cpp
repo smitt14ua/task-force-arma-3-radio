@@ -114,8 +114,8 @@ class ace_arsenal_stats {
         displayName = "$STR_a3_rscdisplayarsenal_stat_range";
         showBar = 1;
         showText = 1;
-        barStatement = QUOTE([ARR_3((_this select 0) select 0, _this select 1, [ARR_3([ARR_2(0, 10000)], [ARR_2(0.01, 1)], false)])] call ace_arsenal_fnc_statBarStatement_default);
-        textStatement = QUOTE(params [ARR_2('_stat', '_config')]; private _rng = getNumber (_config >> _stat select 0); format [ARR_2('%1m',_rng)]);
+        barStatement = QUOTE([ARR_3((_this select 0) select 0,_this select 1,[ARR_3([ARR_2(0,10000)],[ARR_2(0.01,1)],false)])] call ace_arsenal_fnc_statBarStatement_default);
+        textStatement = QUOTE(params [ARR_2('_stat','_config')]; private _rng = getNumber (_config >> _stat select 0); format [ARR_2('%1m',_rng)]);
         condition = QUOTE(getNumber (_this select 1 >> (_this select 0) select 0) > 0);
         tabs[] = {{12}, {}};
     };
@@ -126,8 +126,8 @@ class ace_arsenal_stats {
         displayName = "$STR_a3_rscdisplayarsenal_stat_range";
         showBar = 1;
         showText = 1;
-        barStatement = QUOTE([ARR_3((_this select 0) select 0, _this select 1, [ARR_3([ARR_2(0, 100000)], [ARR_2(0.01, 1)], false)])] call ace_arsenal_fnc_statBarStatement_default);
-        textStatement = QUOTE(params [ARR_2('_stat', '_config')]; private _rng = getNumber (_config >> _stat select 0); format [ARR_2('%1m',_rng)]);
+        barStatement = QUOTE([ARR_3((_this select 0) select 0,_this select 1,[ARR_3([ARR_2(0,100000)],[ARR_2(0.01,1)],false)])] call ace_arsenal_fnc_statBarStatement_default);
+        textStatement = QUOTE(params [ARR_2('_stat','_config')]; private _rng = getNumber (_config >> _stat select 0); format [ARR_2('%1m',_rng)]);
         condition = QUOTE((getNumber (_this select 1 >> 'tf_hasLRradio') > 0) && getNumber (_this select 1 >> (_this select 0) select 0) > 0);
         tabs[] = {{5}, {}};
     };
@@ -137,7 +137,7 @@ class ace_arsenal_stats {
         stats[] = {"tf_encryptionCode"};
         displayName = CSTRING(radio_encryption_code);
         showText= 1;
-        textStatement = QUOTE(params [ARR_2('_stat', '_config')]; private _enc = getText (_config >> _stat select 0); _enc);
+        textStatement = QUOTE(params [ARR_2('_stat','_config')]; private _enc = getText (_config >> _stat select 0); _enc);
         condition = QUOTE(call TFAR_fnc_statCondition_encryptionCode);
         tabs[] = {{12, 5}, {}};
     };

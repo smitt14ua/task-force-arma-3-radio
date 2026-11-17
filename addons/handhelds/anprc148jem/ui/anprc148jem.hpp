@@ -78,11 +78,10 @@ class anprc148jem_radio_dialog {
         canModify = 1;
         moving = 1;
         TFAR_CHANNEL_NAME_EDIT_HANDLER(TF_sw_dialog_radio,SW_CHANNEL);
-        onKeyUp = QUOTE( \
+        onKeyUp = QUOTE(\
             if (_this select 1 in [ARR_2(28,156)]) then { \
                 [((ctrlParent (_this select 0))) displayCtrl IDC_ANPRC148JEM_EDIT] call TFAR_handhelds_fnc_onButtonClick_Enter; \
-            }; \
-        );
+            };);
     };
     class channel_edit: RscEditLCD {
         idc = IDC_ANPRC148JEM_CHANNEL_EDIT;
@@ -138,10 +137,9 @@ class anprc148jem_radio_dialog {
         y = "0.5726 * safezoneH + safezoneY";
         w = "0.0201094 * safezoneW";
         h = "0.0363 * safezoneH";
-        action = QUOTE( \
-            [ARR_2(TF_sw_dialog_radio, ((TF_sw_dialog_radio call TFAR_fnc_getCurrentSwStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setSwStereo; \
-            [TF_sw_dialog_radio] call TFAR_fnc_showRadioVolume; \
-        );
+        action = QUOTE(\
+            [ARR_2(TF_sw_dialog_radio,((TF_sw_dialog_radio call TFAR_fnc_getCurrentSwStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setSwStereo; \
+            [TF_sw_dialog_radio] call TFAR_fnc_showRadioVolume;);
         tooltip = ECSTRING(core,stereo_settings);
     };
     class volume_Switch: HiddenRotator {

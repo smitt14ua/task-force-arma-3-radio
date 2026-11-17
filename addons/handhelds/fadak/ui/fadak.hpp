@@ -112,11 +112,10 @@ class fadak_radio_dialog {
         tooltip = ECSTRING(core,current_freq);
         canModify = 1;
         TFAR_CHANNEL_NAME_EDIT_HANDLER(TF_sw_dialog_radio,SW_CHANNEL);
-        onKeyUp = QUOTE( \
+        onKeyUp = QUOTE(\
             if (_this select 1 in [ARR_2(28,156)]) then { \
                 [((ctrlParent (_this select 0))) displayCtrl IDC_FADAK_EDIT] call TFAR_handhelds_fnc_onButtonClick_Enter; \
-            }; \
-        );
+            };);
     };
     class channel_edit: RscEditLCD {
         idc = IDC_FADAK_CHANNEL_EDIT;
@@ -135,10 +134,9 @@ class fadak_radio_dialog {
         y = "0.6738 * safezoneH + safezoneY";
         w = "0.0164063 * safezoneW";
         h = "0.0252056 * safezoneH";
-        action = QUOTE( \
-            [ARR_2(TF_sw_dialog_radio, ((TF_sw_dialog_radio call TFAR_fnc_getCurrentSwStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setSwStereo; \
-            [TF_sw_dialog_radio] call TFAR_fnc_showRadioVolume; \
-        );
+        action = QUOTE(\
+            [ARR_2(TF_sw_dialog_radio,((TF_sw_dialog_radio call TFAR_fnc_getCurrentSwStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setSwStereo; \
+            [TF_sw_dialog_radio] call TFAR_fnc_showRadioVolume;);
         tooltip = ECSTRING(core,stereo_settings);
     };
     class channel_switch: HiddenRotator {

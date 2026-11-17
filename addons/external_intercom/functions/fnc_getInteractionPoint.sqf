@@ -54,6 +54,6 @@ private _hitIndex = _intersections findIf {(_x select 2) isEqualTo _vehicle || {
 if (_hitIndex == -1) exitWith {_externalIntercomInset};
 
 private _position = _vehicle worldToModel ASLToAGL (_intersections select _hitIndex select 0);
-TRACE_1("Calculated Position set to: %1", _position);
+TRACE_1("Calculated Position set to: %1",_position);
 EGVAR(core,VehicleConfigCacheNamespace) setVariable [_cacheName, _position];
 _position;

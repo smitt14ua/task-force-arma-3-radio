@@ -21,7 +21,7 @@
   Public: Yes
 */
 
-if !(params [["_vehicle",objNull,[objNull]]]) exitWith { ERROR_1("TFAR: Vehicle must be passed to getVehicleRadios. %1 was passed instead.", _vehicle) };
+if !(params [["_vehicle",objNull,[objNull]]]) exitWith { ERROR_1("TFAR: Vehicle must be passed to getVehicleRadios. %1 was passed instead.",_vehicle) };
 if (isNull _vehicle || {!(_vehicle call TFAR_fnc_hasVehicleRadio)}) exitWith {[]};
 
 private _result = [[_vehicle, "gunner_radio_settings"], [_vehicle, "driver_radio_settings"], [_vehicle, "commander_radio_settings"], [_vehicle, "copilot_radio_setting"]];

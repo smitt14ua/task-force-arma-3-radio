@@ -216,11 +216,10 @@ class mr3000_radio_dialog {
         tooltip = ECSTRING(core,current_freq);
         canModify = 1;
         TFAR_CHANNEL_NAME_EDIT_HANDLER(TF_lr_dialog_radio,LR_CHANNEL);
-        onKeyUp = QUOTE( \
+        onKeyUp = QUOTE(\
             if (_this select 1 in [ARR_2(28,156)]) then { \
                 [((ctrlParent (_this select 0))) displayCtrl IDC_MR3000_EDIT] call TFAR_backpacks_fnc_onButtonClick_Enter; \
-            }; \
-        );
+            };);
     };
     class channel_edit: RscEditLCD {
         idc = IDC_MR3000_CHANNEL_EDIT;
@@ -240,10 +239,9 @@ class mr3000_radio_dialog {
         y = "0.5572 * safezoneH + safezoneY";
         w = "0.0216563 * safezoneW";
         h = "0.0308069 * safezoneH";
-        action = QUOTE( \
-            [ARR_2(TF_lr_dialog_radio, ((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
-            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume; \
-        );
+        action = QUOTE(\
+            [ARR_2(TF_lr_dialog_radio,((TF_lr_dialog_radio call TFAR_fnc_getCurrentLrStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setLrStereo; \
+            [TF_lr_dialog_radio] call TFAR_fnc_showRadioVolume;);
         tooltip = ECSTRING(core,stereo_settings);
     };
     class additional: HiddenRotator {
@@ -253,12 +251,11 @@ class mr3000_radio_dialog {
         w = "0.0367463 * safezoneW";
         h = "0.0812181 * safezoneH";
         tooltip = ECSTRING(core,set_additional);
-        action = QUOTE( \
+        action = QUOTE(\
             playSound 'TFAR_rotatorPush'; \
             [ARR_2(TF_lr_dialog_radio,TF_lr_dialog_radio call TFAR_fnc_getLrChannel)] call TFAR_fnc_setAdditionalLrChannel; \
             call TFAR_fnc_updateLRDialogToChannel; \
-            [ARR_2(TF_lr_dialog_radio, true)] call TFAR_fnc_showRadioInfo; \
-        );
+            [ARR_2(TF_lr_dialog_radio,true)] call TFAR_fnc_showRadioInfo;);
     };
     class volume_switch: HiddenRotator {
         idc = IDC_MR3000_VOLUME_SWITCH;

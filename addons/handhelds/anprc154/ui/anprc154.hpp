@@ -28,8 +28,7 @@ class anprc154_radio_dialog {
             ((_this select 0) displayCtrl TF_IDD_BACKGROUND) ctrlSetText 'PATHTOF(anprc154\ui\anprc154_n.paa)'; \
             ((_this select 0) displayCtrl IDC_MICRODAGR_BACKGROUND) ctrlSetText 'PATHTOF(microdagr\ui\microdagr_n.paa)'; \
         }; \
-        _this call TFAR_fnc_updateProgrammatorDialog; \
-    );
+        _this call TFAR_fnc_updateProgrammatorDialog;);
     controls[]= {
         "background",
         "prev_channel",
@@ -96,10 +95,9 @@ class anprc154_radio_dialog {
         y = "0.6628 * safezoneH + safezoneY";
         w = "0.0309222 * safezoneW";
         h = "0.0395915 * safezoneH";
-        action = QUOTE( \
-            [ARR_2(TF_sw_dialog_radio, ((TF_sw_dialog_radio call TFAR_fnc_getCurrentSwStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setSwStereo; \
-            [TF_sw_dialog_radio] call TFAR_fnc_showRadioVolume; \
-        );
+        action = QUOTE(\
+            [ARR_2(TF_sw_dialog_radio,((TF_sw_dialog_radio call TFAR_fnc_getCurrentSwStereo) + 1) mod TFAR_MAX_STEREO)] call TFAR_fnc_setSwStereo; \
+            [TF_sw_dialog_radio] call TFAR_fnc_showRadioVolume;);
         tooltip = ECSTRING(core,stereo_settings);
     };
     class reset_channel: HiddenButton {
@@ -164,11 +162,10 @@ class anprc154_radio_dialog {
         canModify = 1;
         tooltip = ECSTRING(core,current_freq);
         TFAR_CHANNEL_NAME_EDIT_HANDLER(TF_sw_dialog_radio,SW_CHANNEL);
-        onKeyUp = QUOTE( \
+        onKeyUp = QUOTE(\
             if (_this select 1 in [ARR_2(28,156)]) then { \
                 [((ctrlParent (_this select 0))) displayCtrl IDC_MICRODAGR_EDIT] call TFAR_handhelds_fnc_onButtonClick_Enter; \
-            }; \
-        );
+            };);
     };
     class clear: HiddenButton {
         idc = IDC_MICRODAGR_CLEAR;
