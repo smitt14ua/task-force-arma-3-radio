@@ -20,6 +20,7 @@
   Public: Yes
 */
 
+if (isNil "_this") exitWith {sideUnknown}; //No active radio
 private _radio = _this;
 if !(_radio isEqualTypeAny [[], ""]) exitWith {sideUnknown};
 

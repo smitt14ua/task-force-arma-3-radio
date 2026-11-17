@@ -20,6 +20,11 @@
 params ["_new"];
 
 private _old = (call TFAR_fnc_activeSwRadio);
+//No SR radio in the radio slot yet, there is nothing to swap out
+if (isNil "_old") exitWith {
+    TFAR_currentUnit assignItem _new;
+    ["OnSWChange", [TFAR_currentUnit, _new, ""]] call TFAR_fnc_fireEventHandlers;
+};
 if (_old == _new) exitWith {false};
 
 private _couldAdd = TFAR_currentUnit canAdd _old;

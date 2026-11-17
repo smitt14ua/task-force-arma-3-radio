@@ -10,7 +10,7 @@
     None
 
   Return Value:
-    Frequency of active LR Radio <STRING>
+    Frequency of active LR Radio, nil if there is no active LR radio <STRING>
 
   Example:
     _LRFrequency = call TFAR_fnc_currentLRFrequency
@@ -18,4 +18,7 @@
   Public: Yes
 */
 
-(call TFAR_fnc_activeLrRadio) call TFAR_fnc_getLrFrequency
+private _radio = call TFAR_fnc_activeLrRadio;
+if (isNil "_radio") exitWith {nil};
+
+_radio call TFAR_fnc_getLrFrequency

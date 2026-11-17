@@ -19,13 +19,16 @@
 */
 params[["_radio", "", [""]]];
 
+//No radio (e.g. no active SR radio), don't create and cache settings for it
+if (_radio isEqualTo "") exitWith {nil};
+
 private _value = TFAR_RadioSettingsNamespace getVariable _radio;
 if (!isNil "_value") exitWith {_value};
 
 if (isNil QGVAR(saved_active_sr_settings)) then  {
     _value = [true, TFAR_currentUnit, _radio] call DFUNC(getDefaultRadioSettings);
 } else {
-    _value = GVAR(saved_active_sr_settings);
+    _value = +GVAR(saved_active_sr_settings);
     GVAR(saved_active_sr_settings) = nil;
 };
 

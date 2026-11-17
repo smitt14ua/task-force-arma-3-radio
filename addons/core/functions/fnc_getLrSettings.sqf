@@ -52,7 +52,7 @@ if (_radio_object isKindOf "Bag_Base") then {
 if (isNil QGVAR(saved_active_lr_settings)) then {
     _value = [false, TFAR_currentUnit, _radioType] call DFUNC(getDefaultRadioSettings)
 } else {
-    _value = GVAR(saved_active_lr_settings);
+    _value = +GVAR(saved_active_lr_settings);
     GVAR(saved_active_lr_settings) = nil;
 };
 

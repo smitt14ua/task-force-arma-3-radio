@@ -50,7 +50,8 @@ private _inputItems = (assignedItems TFAR_currentUnit - TFAR_core_cacheNonRadioI
 
 private _radiosToRequest = _inputItems select _radioSelector;
 
-TFAR_core_cacheNonRadioItems append (_inputItems - _radiosToRequest);
+//Only cache items that are no radios at all. Owned instanced radios must still be found when replacing all radios
+TFAR_core_cacheNonRadioItems append ((_inputItems - _radiosToRequest) select {!(_x call TFAR_fnc_isRadio) && {!(_x call TFAR_fnc_isPrototypeRadio)}});
 
 //If we had a Radio assigned to the Radio slot before, then we want to assign one to it again when we get the instanciated radios back
 private _linkFirstItem = !(_radiosToRequest isEqualTo []);

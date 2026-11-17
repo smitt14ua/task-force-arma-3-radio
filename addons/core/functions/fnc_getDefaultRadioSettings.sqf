@@ -51,8 +51,10 @@ if (_isSR) then {
             };
         };
         // the side settings were generated on the server, so they carry the server's owner UID
-        // (they can still be missing on a JIP client before the server's public variable arrived)
-        if (!isNil "_return") then {
+        // (they can still be missing on a JIP client before the server's public variable arrived, then generate them)
+        if (isNil "_return") then {
+            _return = true call DFUNC(generateSRSettings);
+        } else {
             _return set [RADIO_OWNER, getPlayerUID player];
         };
     } else {
@@ -84,6 +86,10 @@ if (_isSR) then {
             default {
                 +(missionNamespace getVariable "TFAR_freq_lr_independent");
             };
+        };
+        // can still be missing on a JIP client before the server's public variable arrived
+        if (isNil "_return") then {
+            _return = true call DFUNC(generateLRSettings);
         };
     } else {
         if (isNil "_frequencies") then {
