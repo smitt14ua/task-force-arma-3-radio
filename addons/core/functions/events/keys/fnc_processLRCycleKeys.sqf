@@ -26,14 +26,8 @@ if ((call TFAR_fnc_haveLRRadio) and {alive TFAR_currentUnit}) then {
     private _radio = call TFAR_fnc_activeLrRadio;
     private _radio_list = TFAR_currentUnit call TFAR_fnc_lrRadiosList;
 
-    private _active_radio_index = 0;
+    private _active_radio_index = 0 max (_radio_list find _radio);
     private _new_radio_index = 0;
-
-    {
-        if (((_x select 0) == (_radio select 0)) or {(_x select 1) == (_radio select 1)}) exitWith {
-            _active_radio_index = _forEachIndex;
-        };
-    } forEach _radio_list;
 
 
     switch (_lr_cycle_direction) do{

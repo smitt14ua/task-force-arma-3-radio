@@ -34,16 +34,16 @@ GVAR(instanciationIsReady) = false;
 
 // after the default radios are set, it's save to instanciate the radios
 [
-    {!(
-        (isNil "TFAR_DefaultRadio_Rifleman_West") && {isNil "TFAR_DefaultRadio_Rifleman_East"} && {isNil "TFAR_DefaultRadio_Rifleman_Independent"} &&
-        {isNil "TFAR_givePersonalRadioToRegularSoldier"} && {isNil "TFAR_instantiate_instantiateAtBriefing"}
-    )},
+    {
+        !(isNil "TFAR_DefaultRadio_Rifleman_West") && {!isNil "TFAR_DefaultRadio_Rifleman_East"} && {!isNil "TFAR_DefaultRadio_Rifleman_Independent"} &&
+        {!isNil "TFAR_givePersonalRadioToRegularSoldier"} && {!isNil "TFAR_instantiate_instantiateAtBriefing"}
+    },
     {
         ["TFAR_RadioRequestEvent", {
             diag_log format["TFAR_RadioRequestEvent %1 %2",_this,diag_tickTime];//#TODO remove
 
             if !(params [["_radio_request", [], [[]]],"_requestingUnit"]) exitWith {
-                diag_log format ["TFAR - ERROR:47 - Request Content: %1; Requested By: %2", _radio_reqest, _requestingUnit];
+                diag_log format ["TFAR - ERROR:47 - Request Content: %1; Requested By: %2", _radio_request, _requestingUnit];
                 ["TFAR_RadioRequestResponseEvent", ["ERROR:47"], _requestingUnit] call CBA_fnc_targetEvent;
             };
 

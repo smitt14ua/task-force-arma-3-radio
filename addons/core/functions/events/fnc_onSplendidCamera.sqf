@@ -6,9 +6,9 @@
   Author: Ampersand
     Eventhandler that fires when opening the Splendid Camera
 
-  Arguments: - Passed from Extended_DisplayUnload_EventHandlers >> RscDisplayCamera
+  Arguments: - Passed from Extended_DisplayLoad/DisplayUnload_EventHandlers >> RscDisplayCamera
     0: Display <DISPLAY>
-    1: Event Type <NUMBER>
+    1: Event Type ("Open" or "Close") <STRING>
 
   Return Value:
     None
@@ -28,7 +28,7 @@ switch _eventType do {
             player setVariable ["TF_fnc_position", {private _pctw = positionCameraToWorld [0,0,0]; [AGLToASL _pctw, (positionCameraToWorld [0,0,1]) vectorDiff _pctw]}];
         }
     };
-    case 2: {
+    case "Close": {
         if (TFAR_splendidCamEars) then {
             player setVariable ["TF_fnc_position", nil];
         }

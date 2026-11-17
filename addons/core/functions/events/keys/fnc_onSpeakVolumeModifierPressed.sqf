@@ -25,8 +25,12 @@ private _allowedModes = ["yelling", "whispering"];
 if(!alive TFAR_currentUnit || TF_tangent_sw_pressed || TF_tangent_lr_pressed) exitWith {false};
 if!(_modifierMode in _allowedModes) exitWith {false};
 
-TF_last_speak_volume_level = TF_speak_volume_level;
-TF_last_speak_volume_meters = TF_speak_volume_meters;
+//Keep the original volume if another modifier is already held
+if !(missionNamespace getVariable [QGVAR(speakVolumeModifierActive), false]) then {
+    TF_last_speak_volume_level = TF_speak_volume_level;
+    TF_last_speak_volume_meters = TF_speak_volume_meters;
+};
+GVAR(speakVolumeModifierActive) = true;
 
 TF_speak_volume_level = _modifierMode;
 if(_modifierMode == "yelling") then {
