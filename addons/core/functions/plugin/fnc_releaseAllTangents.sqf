@@ -20,12 +20,17 @@
 
 params ["_unit"];
 
+//Called from camera/spectator paths, also in singleplayer and Eden where the client isn't initialized
+if (isNil "TFAR_currentUnit") exitWith {};
+
 // Stops transmissions cleanly in-game (takes care of hint and in-game variables)
 if (_unit isEqualTo TFAR_currentUnit) then {
     call TFAR_fnc_onSwTangentReleased;
     call TFAR_fnc_onAdditionalSwTangentReleased;
     call TFAR_fnc_onLRTangentReleased;
     call TFAR_fnc_onAdditionalLRTangentReleased;
+    //Transmission not started by a tangent keybinding
+    [] call TFAR_fnc_endTangentTransmission;
 };
 
 "task_force_radio_pipe" callExtension (format ["RELEASE_ALL_TANGENTS	%1~", _unit getVariable ["TFAR_unitName", name _unit]]); //Async call will always return "OK"

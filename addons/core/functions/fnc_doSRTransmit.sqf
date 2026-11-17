@@ -17,7 +17,7 @@
     3: Is Additional Channel <BOOL>
 
   Return Value:
-    None
+    Whether the transmission was started <BOOL>
 
   Example:
    [_radio, _channel, _currentFrequency, false] call TFAR_fnc_doSRTransmit;
@@ -63,7 +63,12 @@ private _pluginCommand = format[
                                 _radio
                             ];
 
+//What the tangent release has to end, see TFAR_fnc_endTangentTransmission
+GVAR(tangentTransmission) = [0, _radio, _channel, _frequency, _additional, diag_tickTime];
+
 [_hintText,_pluginCommand, [0,-1] select TFAR_showTransmittingHint] call TFAR_fnc_processTangent;
 
 //						unit, radio, radioType, additional, buttonDown
 ["OnTangent", [TFAR_currentUnit, _radio, 0, _additional, true]] call TFAR_fnc_fireEventHandlers;
+
+true

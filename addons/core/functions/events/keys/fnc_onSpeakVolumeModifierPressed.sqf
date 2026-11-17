@@ -22,7 +22,9 @@ params ["_modifierMode"];
 
 private _allowedModes = ["yelling", "whispering"];
 
-if(!alive TFAR_currentUnit || TF_tangent_sw_pressed || TF_tangent_lr_pressed) exitWith {false};
+if (!isMultiplayer) exitWith {false};
+//A radio transmission (or its delayed release) holds the plugin's tangent
+if(!alive TFAR_currentUnit || TF_tangent_sw_pressed || TF_tangent_lr_pressed || {(missionNamespace getVariable [QGVAR(pendingTangentRelease), []]) isNotEqualTo []}) exitWith {false};
 if!(_modifierMode in _allowedModes) exitWith {false};
 
 //Keep the original volume if another modifier is already held
@@ -48,6 +50,10 @@ call TFAR_fnc_sendFrequencyInfo;
 
 private _localName = localize format[LSTRING(voice_%1), _modifierMode];
 private _hintText = format[localize LSTRING(voice_volume), _localName];
+//Radio tangents are blocked while direct speech is forced, the Released handler sends the RELEASED
+if (TFAR_volumeModifier_forceSpeech && {isNil QGVAR(speakVolumeForcedSpeechTime)}) then {
+    GVAR(speakVolumeForcedSpeechTime) = diag_tickTime;
+};
 if (TFAR_oldVolumeHint) then {
     if (TFAR_volumeModifier_forceSpeech) then {
         [_hintText,format["TANGENT	PRESSED	%1	%2	%3","directSpeechFreq", 0, "directSpeech"],-1] call TFAR_fnc_processTangent;

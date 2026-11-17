@@ -14,6 +14,7 @@ PREP_SUB(events\handler,addEventHandler);
 PREP_SUB(events\handler,fireEventHandlers);
 PREP_SUB(events\handler,removeEventHandler);
 
+PREP_SUB(events\keys,endTangentTransmission);
 PREP_SUB(events\keys,onAdditionalLRTangentReleased);
 PREP_SUB(events\keys,onAdditionalLRTangentPressed);
 PREP_SUB(events\keys,onAdditionalSwTangentReleased);
@@ -28,13 +29,13 @@ PREP_SUB(events\keys,onSwTangentPressed);
 PREP_SUB(events\keys,onSwTangentReleased);
 PREP_SUB(events\keys,onSwTangentReleasedHack);
 PREP_SUB(events\keys,onTangentPressedHack);
-PREP_SUB(events\keys,processCuratorKey);
 PREP_SUB(events\keys,processLRChannelKeys);
 PREP_SUB(events\keys,processLRCycleKeys);
 PREP_SUB(events\keys,processLRStereoKeys);
 PREP_SUB(events\keys,processSWChannelKeys);
 PREP_SUB(events\keys,processSWCycleKeys);
 PREP_SUB(events\keys,processSWStereoKeys);
+PREP_SUB(events\keys,startTangentTransmission);
 
 PREP_SUB(events\ui,onSwDialogOpen);
 PREP_SUB(events\ui,onLRDialogOpen);
