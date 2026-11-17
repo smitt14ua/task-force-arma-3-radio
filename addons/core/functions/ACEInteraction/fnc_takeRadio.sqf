@@ -34,8 +34,12 @@ if (_radio isEqualType "") then {
     private _newBackpack = unitBackpack _unit;
     private _oldBackpack = unitBackpack _target;
     {
-        _newBackpack setVariable [_x, _oldBackpack getVariable _x];
+        _newBackpack setVariable [_x, _oldBackpack getVariable _x, true];
         nil;
     } count (allVariables _oldBackpack);
+    //Move the content, removeBackpackGlobal deletes it together with the backpack
+    {_newBackpack addItemCargoGlobal [_x, 1]; nil} count (itemCargo _oldBackpack);
+    {_newBackpack addMagazineAmmoCargo [_x select 0, 1, _x select 1]; nil} count (magazinesAmmoCargo _oldBackpack);
+    {_newBackpack addWeaponWithAttachmentsCargoGlobal [_x, 1]; nil} count (weaponsItemsCargo _oldBackpack);
     removeBackpackGlobal _target;
 };

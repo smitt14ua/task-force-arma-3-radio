@@ -28,7 +28,7 @@ private _children = [];
     _children pushBack
         [
             [
-                format["TFAR_selfinteraction_LRradio_%1", _radiotype],
+                format["TFAR_selfinteraction_LRradio_%1_%2", _radiotype, _forEachIndex],
                 [_radiotype, "displayName", ""] call TFAR_fnc_getVehicleConfigProperty,
                 [_radiotype, "picture"] call TFAR_fnc_getVehicleConfigProperty,
                 {

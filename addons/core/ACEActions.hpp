@@ -15,7 +15,7 @@ class CAManBase: Man {
             class TFAR_Radio {
                 displayName = CSTRING(RADIOS);
                 distance = 2;
-                condition = "_player call TFAR_fnc_hasRadio";
+                condition = "_target call TFAR_fnc_hasRadio";
                 exceptions[] = {};
                 statement = "";
                 icon = QPATHTOF(ui\ACE_Interaction_Radio_Icon.paa);

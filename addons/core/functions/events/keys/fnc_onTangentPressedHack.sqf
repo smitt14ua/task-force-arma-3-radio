@@ -20,8 +20,6 @@
 
 params ["","_scancode","_shift","_ctrl","_alt"];
 
-if !(call TFAR_fnc_isAbleToUseRadio) exitWith {false};
-
 private _matchbox = [];
 private _modifiers = [_shift,_ctrl,_alt];
 
@@ -58,6 +56,9 @@ private _fnc_matchModifiers = {
     ["TFAR", "LRTransmit"] call cba_fnc_getKeybind,
     ["TFAR", "LRTransmitAdditional"] call cba_fnc_getKeybind
 ];
+
+//Checked after matching, so unrelated key presses don't run the expensive check
+if (_matchbox isEqualTo [] || {!(call TFAR_fnc_isAbleToUseRadio)}) exitWith {false};
 
 _matchBox sort false; //Check the radio that has more modifiers first
 

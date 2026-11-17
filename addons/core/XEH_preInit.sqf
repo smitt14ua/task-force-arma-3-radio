@@ -154,7 +154,7 @@ if (isDedicated) exitWith {}; //Code below here only on clients
 
 //To support channel switching while transmitting, we need to stop transmission on old channel, and start new transmission on new channel
 
-GVAR(currentTransmittingRadio) = []; //List of radios that are currently transmitting
+GVAR(currentTransmittingRadio) = []; //List of [radio, isAdditional] that are currently transmitting
 
 ["TFAR_event_OnTangent", {
     params ["_unit", "_radio", "_type", "_isAdditional", "_start"];
@@ -162,22 +162,27 @@ GVAR(currentTransmittingRadio) = []; //List of radios that are currently transmi
     private _activeRadios = GVAR(currentTransmittingRadio);
 
     if (_start) then {
-        _activeRadios pushBackUnique _radio;
+        _activeRadios pushBackUnique [_radio, _isAdditional];
     } else {
-        _activeRadios deleteAt (_activeRadios find _radio);
+        _activeRadios deleteAt (_activeRadios find [_radio, _isAdditional]);
     };
 }] call CBA_fnc_addEventHandler;
 
 ["TFAR_event_OnSWchannelSet", {
     params ["", "_radio", "_newChannel", "_isAdditional", "_oldChannel"];
 
+    //Toggling the additional channel off reports the old channel, read the actual one
+    if (_isAdditional) then {_newChannel = _radio call TFAR_fnc_getAdditionalSwChannel;};
     if (_newChannel == _oldChannel) exitWith {};
 
-    if (_radio in GVAR(currentTransmittingRadio)) then {
+    //Only restart if the changed channel (primary or additional) is the one transmitting
+    if ([_radio, _isAdditional] in GVAR(currentTransmittingRadio)) then {
         //Currently transmitting on that radio, stop transmission on old channel and start new one on new channel
         private _oldFrequency = [_radio, _oldChannel + 1] call TFAR_fnc_getChannelFrequency;
         [_radio, _oldChannel, _oldFrequency, _isAdditional] call TFAR_fnc_doSRTransmitEnd;
 
+        //Additional channel disabled, the additional tangent release can't end the transmission anymore
+        if (_newChannel < 0) exitWith {TF_tangent_sw_pressed = false;};
         private _newFrequency = [_radio, _newChannel + 1] call TFAR_fnc_getChannelFrequency;
         [_radio, _newChannel, _newFrequency, _isAdditional] call TFAR_fnc_doSRTransmit;
     };
@@ -186,15 +191,20 @@ GVAR(currentTransmittingRadio) = []; //List of radios that are currently transmi
 ["TFAR_event_OnLRchannelSet", {
     params ["", "_radioObj", "_radioQualif", "_newChannel", "_isAdditional", "_oldChannel"];
 
-    if (_newChannel == _oldChannel) exitWith {};
-
     private _radio = [_radioObj, _radioQualif];
 
-    if (_radio in GVAR(currentTransmittingRadio)) then {
+    //Toggling the additional channel off reports the old channel, read the actual one
+    if (_isAdditional) then {_newChannel = _radio call TFAR_fnc_getAdditionalLrChannel;};
+    if (_newChannel == _oldChannel) exitWith {};
+
+    //Only restart if the changed channel (primary or additional) is the one transmitting
+    if ([_radio, _isAdditional] in GVAR(currentTransmittingRadio)) then {
         //Currently transmitting on that radio, stop transmission on old channel and start new one on new channel
         private _oldFrequency = [_radio, _oldChannel + 1] call TFAR_fnc_getChannelFrequency;
         [_radio, _oldChannel, _oldFrequency, _isAdditional] call TFAR_fnc_doLRTransmitEnd;
 
+        //Additional channel disabled, the additional tangent release can't end the transmission anymore
+        if (_newChannel < 0) exitWith {TF_tangent_lr_pressed = false;};
         private _newFrequency = [_radio, _newChannel + 1] call TFAR_fnc_getChannelFrequency;
         [_radio, _newChannel, _newFrequency, _isAdditional] call TFAR_fnc_doLRTransmit;
     };

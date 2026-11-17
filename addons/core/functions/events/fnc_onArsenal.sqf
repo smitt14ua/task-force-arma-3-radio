@@ -36,8 +36,8 @@ switch _eventType do {
             TFAR_ArsenalBackpackVariables = [backpack player,_backpackVariables];
         };//else non tfar backpack
 
-        call TFAR_fnc_onLRTangentReleased; //Stop transmitting as arsenal catches the keyUp event
-        call TFAR_fnc_onSWTangentReleased;
+        //Stop transmitting as arsenal catches the keyUp event (TFAR_currentUnit is nil in singleplayer/before clientInit)
+        if (!isNil "TFAR_currentUnit") then {TFAR_currentUnit call TFAR_fnc_releaseAllTangents;};
     };
     case "PostOpen": {
 

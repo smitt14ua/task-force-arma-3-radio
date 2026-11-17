@@ -32,7 +32,7 @@ class Extended_DisplayLoad_EventHandlers { //From commy2
     };
     class RscDisplayCamera {
         //_this -> [Display #314]
-        TFAR_SplendidCameraOpened = "[_this select 1] call TFAR_fnc_onSplendidCamera";
+        TFAR_SplendidCameraOpened = "[_this select 0, 'Open'] call TFAR_fnc_onSplendidCamera";
     };
 };
 
@@ -48,7 +48,7 @@ class Extended_DisplayUnload_EventHandlers {
     };
     class RscDisplayCamera {
         //_this -> [Display #314,2]
-        TFAR_SplendidCameraOpened = "[_this select 1] call TFAR_fnc_onSplendidCamera";
+        TFAR_SplendidCameraOpened = "[_this select 0, 'Close'] call TFAR_fnc_onSplendidCamera";
     };
 };
 
