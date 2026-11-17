@@ -31,11 +31,18 @@ private _statement = "";
 
 _intercomChannels = _intercomChannels apply {
     _statement = getText(_intercomRootClass >> _x >> "statement");
-    // Since we're dealing with unpredictable developers, search a string of 5
-    // characters then filter out anything non-numeric but include negative (-)
-    _channelId = parseNumber ([_statement select [((_statement find _searchTerm) + count _searchTerm),5], "-0123456789"] call BIS_fnc_filterString);
-    [getText(_intercomRootClass >> _x >> "displayName"), _channelId];
+    private _searchIndex = _statement find _searchTerm;
+    // Skip channels whose statement doesn't match the expected pattern
+    if (_searchIndex == -1) then {
+        []
+    } else {
+        // Since we're dealing with unpredictable developers, search a string of 5
+        // characters then filter out anything non-numeric but include negative (-)
+        _channelId = parseNumber ([_statement select [(_searchIndex + count _searchTerm),5], "-0123456789"] call BIS_fnc_filterString);
+        [getText(_intercomRootClass >> _x >> "displayName"), _channelId];
+    };
 };
+_intercomChannels = _intercomChannels select {_x isNotEqualTo []};
 
 if (_intercomChannels isEqualTo []) exitWith { [] };
 

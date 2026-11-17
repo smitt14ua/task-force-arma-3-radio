@@ -20,6 +20,8 @@
 
 params ["_tower"];
 
+if (!hasInterface) exitWith {}; // radioTowerList only exists on clients
+
 [GVAR(radioTowerList), _tower] call CBA_fnc_hashRem;
 
 [_tower] call FUNC(pluginRemoveRadioTower);

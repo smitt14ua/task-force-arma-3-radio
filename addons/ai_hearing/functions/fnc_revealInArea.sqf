@@ -21,10 +21,12 @@
 
 params [["_unit", objNull, [objNull, []]], ["_distance", 5, [0]]];
 TRACE_2("revealInArea",_unit,_distance);
+private _radius = _distance * 0.95;
 {
+    // knowsAbout is checked in the reveal event handler, where the AI is local
     if (!(isPlayer _x) &&
+        {_unit distance _x <= _radius} &&
         {!((vehicle _x) call TFAR_fnc_isVehicleIsolated)} &&
-        {_x knowsAbout _unit <= 1.5} &&
         {((_x getVariable [QGVAR(lastReveal), 0]) - CBA_missiontime) < -20}) then {
 
         _x setVariable [QGVAR(lastReveal), CBA_missiontime];
@@ -35,4 +37,4 @@ TRACE_2("revealInArea",_unit,_distance);
         [QGVAR(reveal), [_x, _unit, _value], _x] call CBA_fnc_targetEvent;
     };
     nil
-} count (_unit nearEntities ["CAManBase", _distance * 0.95]);
+} count ([_unit, _radius, _radius, 0, false, _radius] nearEntities [["CAManBase"], false, true, true]); // includes vehicle crew

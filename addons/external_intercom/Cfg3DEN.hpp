@@ -39,7 +39,7 @@ class Cfg3DEN {
                         control = "TFAR_RangeSlider";
                         displayName = CSTRING(3DEN_ATTRIBUTE_MAX_RANGE_PHONE_HEADER);
                         tooltip = CSTRING(3DEN_ATTRIBUTE_MAX_RANGE_PHONE_DESC);
-                        expression = QUOTE(if (_value > 0) then {_this setVariable [ARR_2('TFAR_externalIntercomMaxRange_Phone',_value)]};);
+                        expression = QUOTE(if (_value > 0) then {_this setVariable [ARR_3('TFAR_externalIntercomMaxRange_Phone',_value,true)]};);
                         typeName = "NUMBER";
                         validate = "number";
                         condition = "objectVehicle";
@@ -50,7 +50,7 @@ class Cfg3DEN {
                         control = "TFAR_RangeSlider";
                         displayName = CSTRING(3DEN_ATTRIBUTE_MAX_RANGE_WIRELESS_HEADER);
                         tooltip = CSTRING(3DEN_ATTRIBUTE_MAX_RANGE_WIRELESS_DESC);
-                        expression = QUOTE(if (_value > 0) then {_this setVariable [ARR_2('TFAR_externalIntercomMaxRange_Wireless',_value)]};);
+                        expression = QUOTE(if (_value > 0) then {_this setVariable [ARR_3('TFAR_externalIntercomMaxRange_Wireless',_value,true)]};);
                         typeName = "NUMBER";
                         validate = "number";
                         condition = "objectVehicle";

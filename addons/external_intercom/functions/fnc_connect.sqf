@@ -87,30 +87,32 @@ if (_wireless) then {
     [{
         params ["_vehicle", "_player", "_intercomMaxRange", "_headgear"];
         (_vehicle distance _player) > _intercomMaxRange
-        || (_player isNil "TFAR_ExternalIntercomVehicle")
+        || !alive _vehicle
+        || !((_player getVariable ["TFAR_ExternalIntercomVehicle", objNull]) isEqualTo _vehicle)
         || !(_headgear isEqualTo (headgear _player))
     }, {
         params ["_vehicle", "_player", "_intercomMaxRange", "_headgear"];
-        private _wasStillConnected = !(_player isNil "TFAR_ExternalIntercomVehicle");
+        // Already disconnected, or connected to another vehicle in the meantime
+        if !((_player getVariable ["TFAR_ExternalIntercomVehicle", objNull]) isEqualTo _vehicle) exitWith {};
 
         [_vehicle, _player] call TFAR_external_intercom_fnc_disconnect;
 
         // Allow automatic reconnect for wireless devices if they run out then back into range
-        if (_wasStillConnected && _headgear isEqualTo (headgear _player)) then {
+        if (alive _vehicle && _headgear isEqualTo (headgear _player)) then {
             _player setVariable ["TFAR_ExternalIntercomOutOfRangeVehicle", _vehicle];
             [{
                 params ["_vehicle", "_player", "_intercomMaxRange", "_headgear"];
                 (_vehicle distance _player) < _intercomMaxRange
                 || !alive _vehicle
                 || !(_headgear isEqualTo (headgear _player))
-                || (_player isNil "TFAR_ExternalIntercomOutOfRangeVehicle")
+                || !((_player getVariable ["TFAR_ExternalIntercomOutOfRangeVehicle", objNull]) isEqualTo _vehicle)
             }, {
                 params ["_vehicle", "_player", "_intercomMaxRange", "_headgear"];
 
                 if (
                     alive _vehicle
                     && _headgear isEqualTo (headgear _player)
-                    && !(_player isNil "TFAR_ExternalIntercomOutOfRangeVehicle")
+                    && (_player getVariable ["TFAR_ExternalIntercomOutOfRangeVehicle", objNull]) isEqualTo _vehicle
                 ) then {
                     [_vehicle, _player, [true]] call TFAR_external_intercom_fnc_connect;
                 };
@@ -125,9 +127,12 @@ if (_wireless) then {
     [{
         params ["_vehicle", "_player", "_interactionPointRelative"];
         ((_vehicle modelToWorld _interactionPointRelative) distance _player) > _vehicle getVariable ["TFAR_externalIntercomMaxRange_Phone", TFAR_externalIntercomMaxRange_Phone]
-        || (_player isNil "TFAR_ExternalIntercomVehicle")
+        || !alive _vehicle
+        || !((_player getVariable ["TFAR_ExternalIntercomVehicle", objNull]) isEqualTo _vehicle)
     }, {
         params ["_vehicle", "_player"];
+        // Already disconnected, or connected to another vehicle in the meantime
+        if !((_player getVariable ["TFAR_ExternalIntercomVehicle", objNull]) isEqualTo _vehicle) exitWith {};
         [_vehicle, _player] call TFAR_external_intercom_fnc_disconnect;
     }, [_vehicle, _player, _interactionPointRelative]] call CBA_fnc_waitUntilAndExecute;
 
@@ -147,6 +152,7 @@ if (_wireless) then {
                 if ((_vehicle getVariable ["TFAR_ExternalIntercomRopeIDs", [nil, nil]] select 0) isEqualTo _ropeID) then {
                     [_vehicle, _vehicle getVariable ["TFAR_ExternalIntercomSpeakers", [objNull, []]] select 0] call TFAR_external_intercom_fnc_disconnect;
                     _vehicle removeEventHandler ["RopeBreak", _thisEventHandler];
+                    _vehicle setVariable ["TFAR_ExternalIntercomRopeEH", nil];
                 };
             }]
         ];
@@ -156,11 +162,13 @@ if (_wireless) then {
     _playerEventhandlers pushBack [
         {["ace_unconscious", _x select 1] call CBA_fnc_removeEventHandler},
         ["ace_unconscious", {
-            params ["_player", "_active"];
-            if (_active && isPlayer _player) then {
+            params ["_unit", "_active"];
+            _thisArgs params ["_player"];
+            // Global event, only react to the connected local player
+            if (_active && {_unit isEqualTo _player} && {!(_player isNil "TFAR_ExternalIntercomVehicle")}) then {
                 [_player getVariable "TFAR_ExternalIntercomVehicle", _player] call TFAR_external_intercom_fnc_disconnect;
             };
-        }] call CBA_fnc_addEventHandler
+        }, [_player]] call CBA_fnc_addEventHandlerArgs
     ];
 };
 
@@ -177,11 +185,12 @@ _playerEventhandlers append [[
         _player removeEventHandler ["GetInMan", _thisEventHandler];
     }]
 ],[
-    {(_this select 0) removeMPEventHandler ["MPKilled", _x select 1]},
-    _player addMPEventHandler ["MPKilled", {
+    {(_this select 0) removeEventHandler ["Killed", _x select 1]},
+    // Killed fires only where the unit is local, so only the connected player's machine disconnects
+    _player addEventHandler ["Killed", {
         params ["_player"];
         [_player getVariable "TFAR_ExternalIntercomVehicle", _player] call TFAR_external_intercom_fnc_disconnect;
-        _player removeMPEventHandler ["MPKilled", _thisEventHandler];
+        _player removeEventHandler ["Killed", _thisEventHandler];
     }]
 ]];
 
@@ -192,9 +201,13 @@ if (_vehicle isNil "TFAR_ExternalIntercomEH") then {
     _vehicle setVariable ["TFAR_ExternalIntercomEH",
         _vehicle addMPEventHandler ["MPKilled", {
             params ["_vehicle"];
+            // MPKilled fires on every machine, each machine disconnects its own connected units (phone user and wireless)
+            (_vehicle getVariable ["TFAR_ExternalIntercomSpeakers", [objNull, []]]) params ["_phoneUser", "_wirelessUsers"];
             {
-                [_vehicle, _x] call TFAR_external_intercom_fnc_disconnect;
-            } forEach ((_vehicle getVariable ["TFAR_ExternalIntercomSpeakers", [objNull, []]]) select 1);
+                if (local _x) then {
+                    [_vehicle, _x] call TFAR_external_intercom_fnc_disconnect;
+                };
+            } forEach ((_wirelessUsers + [_phoneUser]) select {!isNull _x});
             _vehicle removeMPEventHandler ["MPKilled", _thisEventHandler];
         }],
         true

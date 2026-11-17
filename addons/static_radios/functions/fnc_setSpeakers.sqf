@@ -22,7 +22,7 @@ params ["_radioContainer","_enabled"];
 
 CBA_SETTINGS_GUARD(TFAR_static_radios_fnc_setSpeakers);
 
-_radio_id = _radioContainer call TFAR_static_radios_fnc_instanciatedRadio;
+private _radio_id = _radioContainer call TFAR_static_radios_fnc_instanciatedRadio;
 
 if (_radio_id call TFAR_fnc_isLRRadio) then {
     _radio_id = [_radio_id, "radio_settings"];
@@ -30,7 +30,7 @@ if (_radio_id call TFAR_fnc_isLRRadio) then {
 
     _settings set [TFAR_SW_SPEAKER_OFFSET, _enabled];
 
-    (_radio_id select 0) setVariable ["TFAR_LRSpeakersEnabled", _enabled];
+    (_radio_id select 0) setVariable ["TFAR_LRSpeakersEnabled", _enabled, true];
 
     [_radio_id, _settings] call TFAR_fnc_setLrSettings;
 } else {
