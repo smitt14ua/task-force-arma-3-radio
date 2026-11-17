@@ -24,9 +24,15 @@ if (canSuspend) exitWith {
     _ret
 };
 
-private _backpackLR = (_this call TFAR_fnc_backpackLr); 
-private _activeLR = missionNamespace getVariable ["TF_lr_active_radio", _backpackLR];
-private _overrideLR = missionNamespace getVariable "TFAR_OverrideActiveLRRadio";
+//Override and active radio (and curator backpacks) belong to the local player's current unit only
+private _isCurrentUnit = _this isEqualTo TFAR_currentUnit;
+private _backpackLR = (_this call TFAR_fnc_backpackLr);
+private _activeLR = _backpackLR;
+private "_overrideLR";
+if (_isCurrentUnit) then {
+    _activeLR = missionNamespace getVariable ["TF_lr_active_radio", _backpackLR];
+    _overrideLR = missionNamespace getVariable "TFAR_OverrideActiveLRRadio";
+};
 private _vehicleLR = _this call TFAR_fnc_vehicleLr;
 
 
@@ -37,7 +43,7 @@ if (_activeLR isEqualTo _vehicleLR) then {_result pushBackUnique _activeLR}; //T
 _result pushBackUnique _backpackLR; //if active one was already backpack, this will do nothing
 _result pushBackUnique _vehicleLR; //Will be silently ignored if _vehicleLR is nil
 
-if ((player call TFAR_fnc_isForcedCurator) and {TFAR_currentUnit == player}) then {
+if (_isCurrentUnit && {TFAR_currentUnit == player} && {player call TFAR_fnc_isForcedCurator}) then {
     if !(isNil "TF_curator_backpack_1") then {
         _result pushBack [TF_curator_backpack_1, "TF_curatorBackPack"];
     };

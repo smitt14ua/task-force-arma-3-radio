@@ -24,7 +24,7 @@ if (GVAR(use_saved_sr_setting) && {isNil QGVAR(saved_active_sr_settings)}) then 
     if ((alive TFAR_currentUnit) && {call TFAR_fnc_haveSWRadio}) then {
         private _active_sr_radio = call TFAR_fnc_activeSwRadio;
         if !(isNil "_active_sr_radio") then {
-            GVAR(saved_active_sr_settings) = _active_sr_radio call DFUNC(getSwSettings);
+            GVAR(saved_active_sr_settings) = +(_active_sr_radio call DFUNC(getSwSettings)); //Copy, the radio's own settings may still be changed in place
         };
     };
 };
@@ -33,7 +33,7 @@ if (GVAR(use_saved_lr_setting) && {isNil QGVAR(saved_active_lr_settings)}) then 
     if ((alive TFAR_currentUnit) && {call TFAR_fnc_haveLRRadio}) then {
         private _active_lr_radio = call TFAR_fnc_activeLrRadio;
         if !(isNil "_active_lr_radio") then {
-            GVAR(saved_active_lr_settings) = _active_lr_radio call DFUNC(getLrSettings);
+            GVAR(saved_active_lr_settings) = +(_active_lr_radio call DFUNC(getLrSettings)); //Copy, the radio's own settings may still be changed in place
         };
     };
 };

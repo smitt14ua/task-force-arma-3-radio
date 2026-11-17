@@ -30,4 +30,7 @@ if (_this isKindOf "Helicopter") then {
     _copilotTurret = _turrets findIf {getNumber (_x >> "isCopilot") == 1};
 };
 
+// turretUnit [-1] would return the driver
+if (_copilotTurret == -1) exitWith {objNull};
+
 _this turretUnit [_copilotTurret]

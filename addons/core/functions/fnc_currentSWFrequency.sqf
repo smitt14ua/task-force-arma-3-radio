@@ -10,7 +10,7 @@
     None
 
   Return Value:
-    Frequency of active SR Radio <STRING>
+    Frequency of active SR Radio, nil if there is no active SR radio <STRING>
 
   Example:
     _SRFrequency = call TFAR_fnc_currentSWFrequency
@@ -18,4 +18,7 @@
   Public: Yes
 */
 
-(call TFAR_fnc_activeSwRadio) call TFAR_fnc_getSwFrequency
+private _radio = call TFAR_fnc_activeSwRadio;
+if (isNil "_radio") exitWith {nil};
+
+_radio call TFAR_fnc_getSwFrequency

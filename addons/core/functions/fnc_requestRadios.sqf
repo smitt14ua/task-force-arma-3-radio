@@ -41,11 +41,24 @@ GVAR(VehicleConfigCacheNamespace) setVariable ["TFAR_fnc_requestRadios_lastExec"
 
 if (_radiosToRequest isEqualTo []) exitWith {};
 
+//A timed out request may still have its handler registered, it would also handle the next response
+if (!isNil QGVAR(lastRadioRequestEH_ID)) then {
+    ["TFAR_RadioRequestResponseEvent", GVAR(lastRadioRequestEH_ID)] call CBA_fnc_removeEventHandler;
+};
+
 //Answer EH. The server sent us instanciated radios
 GVAR(lastRadioRequestEH_ID) = [
     "TFAR_RadioRequestResponseEvent", {
 
         params [["_response", [], [[]]]];
+
+        //Got a outdated result
+        if !(_thisId isEqualTo GVAR(lastRadioRequestEH_ID)) exitWith {
+            ["TFAR_RadioRequestResponseEvent", _thisId] call CBA_fnc_removeEventHandler;
+            //#TODO this should be handled like an error. If this happens the server will discard unique IDs and we only have a limited number of them
+            //I don't really want a garbage collection system like ACRE. TFAR's system is enough if we take some care not to throw away IDs.
+        };
+
         if ((_response isEqualTo []) || {(_response select 0) isEqualTo "ERROR:47"}) exitWith {
             diag_log ["TFAR_ReceiveRadioRequestResponse", _response];
             // hintC _response; - takes STRING not ARRAY?
@@ -56,13 +69,6 @@ GVAR(lastRadioRequestEH_ID) = [
         };
 
         _thisArgs params ["_radiosToReplace", "_linkFirstItem", "_settingsToCopy", "_requestedUnit"];
-
-        //Got a outdated result
-        if !(_thisId isEqualTo GVAR(lastRadioRequestEH_ID)) exitWith {
-            ["TFAR_RadioRequestResponseEvent", _thisId] call CBA_fnc_removeEventHandler;
-            //#TODO this should be handled like an error. If this happens the server will discard unique IDs and we only have a limited number of them
-            //I don't really want a garbage collection system like ACRE. TFAR's system is enough if we take some care not to throw away IDs.
-        };
 
         diag_log ["TFAR_ReceiveRadioRequestResponse", _response]; //#TODO remove on release
 

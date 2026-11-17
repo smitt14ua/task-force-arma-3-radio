@@ -8,7 +8,7 @@
 
   Arguments:
     0: structured text to display <TEXT>
-    1:  Time to display the hint (-1 for infinite) <SCALAR>
+    1:  Time to display the hint (-1 for infinite, 0 to not show it) <SCALAR> (default: 5)
 
   Return Value:
     None
@@ -20,7 +20,7 @@
   Public: Yes
 */
 
-params ["_text", "_time"];
+params ["_text", ["_time", 5, [0]]];
 if (_time == 0) exitWith {};
 
 if (isNull (uiNamespace getVariable ["TFAR_Hint_Display", displayNull])) then {
