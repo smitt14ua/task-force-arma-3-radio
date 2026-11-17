@@ -43,38 +43,44 @@ private _cache = _unit getVariable QGVAR(isTurnedOutCache);
 if (!isNil "_cache" && {(_cache select 0) == diag_frameNo}) exitWith {+(_cache select 1)};
 
 private _result = call {
-    private _fnc_getAttenuationFromEffect =
-    [
-        {
-            [(typeOf _vehicle), "tf_isolatedAmount", 0.0] call TFAR_fnc_getVehicleConfigProperty
-        },
-        {
+    private _vehicle = vehicle _unit;
+
+    // Config values don't change at runtime, cache them per vehicle class (this runs for every unit in a vehicle on
+    // every position update): [open vehicle, config CBA_attenuatedRoles, soundAttenuationCargo, attenuation amount]
+    if (isNil QGVAR(isTurnedOutConfigCache)) then {GVAR(isTurnedOutConfigCache) = createHashMap};
+    private _vehicleType = typeOf _vehicle;
+    private _vehicleKey = [_vehicleType, TFAR_experimentalVehicleIsolation];
+    private _vehicleData = GVAR(isTurnedOutConfigCache) get _vehicleKey;
+    if (isNil "_vehicleData") then {
+        private _config = configFile >> "CfgVehicles" >> _vehicleType;
+        // class CfgSoundEffects >> class AttenuationsEffects
+        private _attenuationType = getText (_config >> "attenuationEffectType");
+
+        private _attenuation = [_vehicleType, "tf_isolatedAmount", 0.0] call TFAR_fnc_getVehicleConfigProperty;
+        if (TFAR_experimentalVehicleIsolation) then {
             private _type = configFile >> "CfgSoundEffects" >> "AttenuationsEffects" >> _attenuationType;
-
-            private _gains =  getArray (_type >> "Equalizer0" >> "gain") + getArray (_type >> "Equalizer1" >> "gain");
-
-            if (_gains isEqualTo []) exitWith {
-                [(typeOf _vehicle), "tf_isolatedAmount", 0.0] call TFAR_fnc_getVehicleConfigProperty
+            private _gains = getArray (_type >> "Equalizer0" >> "gain") + getArray (_type >> "Equalizer1" >> "gain");
+            if (_gains isNotEqualTo []) then {
+                private _sum = 0;
+                {
+                    _sum = _sum + _x;
+                } forEach _gains;
+                _attenuation = 1 - (_sum / count _gains);
             };
+        };
 
-            private _sum = 0;
-            {
-                _sum = _sum + _x;
-            } forEach _gains;
-
-            1- (_sum / count _gains)
-        }
-    ] select TFAR_experimentalVehicleIsolation;
-
-
+        _vehicleData = [
+            _attenuationType in ["OpenCarAttenuation", "OpenHeliAttenuation", "jsrs_OpenCar_Attenuation", "jsrs_SemiOpenCar_Attenuation"],
+            getArray (_config >> "CBA_attenuatedRoles"),
+            getArray (_config >> "soundAttenuationCargo"),
+            _attenuation
+        ];
+        GVAR(isTurnedOutConfigCache) set [_vehicleKey, _vehicleData];
+    };
+    _vehicleData params ["_isOpenVehicle", "_configAttenuatedRoles", "_attenuateCargo", "_attenuation"];
 
     // open vehicle
-    private _vehicle = vehicle _unit;
-    private _config = configFile >> "CfgVehicles" >> typeOf _vehicle;
-
-    // class CfgSoundEffects >> class AttenuationsEffects
-    private _attenuationType = getText (_config >> "attenuationEffectType");
-    if (_attenuationType in ["OpenCarAttenuation", "OpenHeliAttenuation", "jsrs_OpenCar_Attenuation", "jsrs_SemiOpenCar_Attenuation"]) exitWith {[true, 3]};
+    if (_isOpenVehicle) exitWith {[true, 3]};
 
     private _fullCrew = fullCrew _vehicle;
     private _crewIndex = _fullCrew findIf {_unit isEqualTo (_x param [0, objNull])};
@@ -83,9 +89,17 @@ private _result = call {
     _role = toLower _role;
     private _return = !_isFFV;
 
+    // Turret config, cached like the vehicle's: [enabledByAnimationSource, gunnerAction]
+    private _turretKey = [_vehicleType, _turretPath];
+    private _turretData = GVAR(isTurnedOutConfigCache) get _turretKey;
+    if (isNil "_turretData") then {
+        private _turret = [_vehicle, _turretPath] call CBA_fnc_getTurret;
+        _turretData = [getText (_turret >> "enabledByAnimationSource"), getText (_turret >> "gunnerAction")];
+        GVAR(isTurnedOutConfigCache) set [_turretKey, _turretData];
+    };
+    _turretData params ["_enabledAnim", "_gunnerAction"];
+
     // override for enabledByAnimationSource FFVs
-    private _turret = [_vehicle, _turretPath] call CBA_fnc_getTurret;
-    private _enabledAnim = getText (_turret >> "enabledByAnimationSource");
     if (!(_enabledAnim isEqualTo "") && {(_vehicle animationSourcePhase _enabledAnim) < 1}) then {
         _return = true;
     };
@@ -93,7 +107,7 @@ private _result = call {
     // API
     // copy, so the array stored in the vehicle variable doesn't grow on every call
     private _attenuationAPI = +(_vehicle getVariable ["CBA_attenuatedRoles", []]);
-    _attenuationAPI append (getArray (_config >> "CBA_attenuatedRoles"));
+    _attenuationAPI append _configAttenuatedRoles;
 
     if !(_attenuationAPI isEqualTo []) then {
         {
@@ -111,35 +125,29 @@ private _result = call {
     };
 
     // Fix for vanilla tank commanders
-    if (!_return && {_role isEqualTo "commander"}) exitWith {[false, call _fnc_getAttenuationFromEffect]};
+    if (!_return && {_role isEqualTo "commander"}) exitWith {[false, _attenuation]};
 
     // This exit is crucial for the difference between FFV and Override and normale roles
     if (!_return) exitWith {[true, 4]}; // return
 
     if (_role in ["gunner", "turret"]) exitWith {
-        [
-            animationState _unit == getText (_turret >> "gunnerAction")
-        ,
-            call _fnc_getAttenuationFromEffect
-        ]
+        [animationState _unit == _gunnerAction, _attenuation]
     };
 
     if (_role isEqualTo "cargo") exitWith {
-        private _attenuateCargo = getArray (_config >> "soundAttenuationCargo");
-
         // if attenuate array has less elements than the current cargo index, use the last value of the array
         private _cargoIndex = _cargoIndex min (count _attenuateCargo - 1);
         private _value = _attenuateCargo param [_cargoIndex, 1];
 
         if (_value == 1) then {
-            [false, call _fnc_getAttenuationFromEffect]
+            [false, _attenuation]
         } else {
             [_value == 0, _value]
         }
 
     };
 
-    [false, call _fnc_getAttenuationFromEffect]
+    [false, _attenuation]
 };
 
 _unit setVariable [QGVAR(isTurnedOutCache), [diag_frameNo, _result]];

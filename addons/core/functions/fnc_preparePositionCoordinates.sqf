@@ -45,17 +45,19 @@ private _useDd = 0;//Numbers are faster than true/false because https://feedback
 if (_eyeDepth < 0) then {
     _useSw = [_unit, _isolated_and_inside, _can_speak, _eyeDepth] call TFAR_fnc_canUseSWRadio;
     _useLr = [_unit, _isolated_and_inside, _eyeDepth] call TFAR_fnc_canUseLRRadio;
-    _useDd = [_eyeDepth, _isolated_and_inside] call TFAR_fnc_canUseDDRadio;
+    _useDd = [_eyeDepth, _isolated_and_inside, _unit] call TFAR_fnc_canUseDDRadio;
 };
 
 private _object_interception = 0;
 private _terrainInterception = 0;
 
 if (_nearPlayer) then {
-    if (TFAR_currentUnit distance _unit <= TF_speakerDistance) then {
+    //Only collected in the pass before TFAR_fnc_sendSpeakerRadios sends them, see TFAR_fnc_processPlayerPositions
+    if (GVAR(collectSpeakerRadios) && {TFAR_currentUnit distance _unit <= TF_speakerDistance}) then {
+        //Read settings directly: getSw/LrSpeakers would create (and broadcast) default settings for radios without any
         if (_unit getVariable ["TFAR_LRSpeakersEnabled", false] && _useLr) then {
             {
-                if (_x call TFAR_fnc_getLrSpeakers) then {
+                if (((_x select 0) getVariable [_x select 1, []]) param [TFAR_LR_SPEAKER_OFFSET, false]) then {
                     private _radio_id = netId (_x select 0);
                     TFAR_speakerRadios append ([_x, _radio_id, _unitName, [], _vehicle, (getPosASL _unit) select 2] call TFAR_fnc_getSpeakerRadioData);
                 };
@@ -64,7 +66,7 @@ if (_nearPlayer) then {
 
         if (_unit getVariable ["TFAR_SRSpeakersEnabled", false] && _useSw) then {
             {
-                if (_x call TFAR_fnc_getSwSpeakers) then {
+                if ((TFAR_RadioSettingsNamespace getVariable [_x, []]) param [TFAR_SW_SPEAKER_OFFSET, false]) then {
                     TFAR_speakerRadios append ([_x, _x, _unitName, [], _vehicle, (getPosASL _unit) select 2] call TFAR_fnc_getSpeakerRadioData);
                 };
             } forEach (_unit call TFAR_fnc_radiosList);

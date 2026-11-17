@@ -120,6 +120,7 @@ if (hasInterface) then {//Clientside Variables
 
 
     TFAR_speakerRadios = [];
+    GVAR(collectSpeakerRadios) = true;
     TFAR_currentNearPlayers = [];
     TFAR_currentFarPlayers = [];
     TFAR_currentNearPlayersProcessing = [];

@@ -29,6 +29,14 @@ if (_result != "OK") then {
 
     if (GVAR(noTSNotConnectedHint) && {_result == "Not connected to TeamSpeak"}) exitWith {};
 
+    //Every position update gets the error, show the (10 second) hint again only once a second or when it changes
+    if (tf_lastError
+        && {_result isEqualTo (missionNamespace getVariable [QGVAR(lastPluginError), ""])}
+        && {diag_tickTime - (missionNamespace getVariable [QGVAR(lastPluginErrorTime), -1]) < 1}
+    ) exitWith {};
+    GVAR(lastPluginError) = _result;
+    GVAR(lastPluginErrorTime) = diag_tickTime;
+
     [parseText (_result), 10] call TFAR_fnc_showHint;
     tf_lastError = true;
 } else {

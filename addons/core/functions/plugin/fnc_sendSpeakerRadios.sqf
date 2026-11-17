@@ -33,7 +33,9 @@ private _speakerRadios = TFAR_speakerRadios;
     private _waveZ = _pos select 2;
     if (_waveZ > 0) then {
         {
-            if ((_x call TFAR_fnc_isRadio) and {_x call TFAR_fnc_getSwSpeakers}) then {
+            //Read settings directly: TFAR_fnc_getSwSpeakers would create (and broadcast) default settings for every
+            //radio lying around, and use up saved settings meant for our own new radio after respawn
+            if ((_x call TFAR_fnc_isRadio) and {(TFAR_RadioSettingsNamespace getVariable [_x, []]) param [TFAR_SW_SPEAKER_OFFSET, false]}) then {
                 _speakerRadios append ([_x, _x, "", _pos, "no"] call TFAR_fnc_getSpeakerRadioData);
             };
         } forEach ((getItemCargo _x) select 0);

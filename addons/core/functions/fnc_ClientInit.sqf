@@ -177,6 +177,7 @@ if (player call TFAR_fnc_isForcedCurator) then {
 
     TFAR_lastLoadoutChange = diag_tickTime; //Switching unit also switches loadout
     TFAR_core_cacheNonRadioItems = []; //Reset cache, used in radiosToRequestCount
+    GVAR(loadoutItemsCache) = []; //The next loadout event belongs to the new unit, see below
     GVAR(VehicleConfigCacheNamespace) setVariable ["lastRadioSettingUpdate",diag_tickTime]; //And changes Radios
 
     if !(TFAR_currentUnit getVariable ["TFAR_HandlersSet",false]) then {
@@ -216,18 +217,24 @@ if (player call TFAR_fnc_isForcedCurator) then {
 },true] call CBA_fnc_addPlayerEventHandler;
 
 ["loadout", {
+    //The loadout event also fires on every shot (ammo count). Radios, backpacks and the vest (DD radio) are
+    //all that matters here, so ignore changes that left them as they were.
+    private _assignedItems = assignedItems TFAR_currentUnit;
+    private _items = [_assignedItems, items TFAR_currentUnit, backpack TFAR_currentUnit, vest TFAR_currentUnit];
+    if (_items isEqualTo (missionNamespace getVariable [QGVAR(loadoutItemsCache), []])) exitWith {};
+    GVAR(loadoutItemsCache) = _items;
+
     //current units loadout changed.. Should invalidate any caches about players loadout.
     TFAR_lastLoadoutChange = diag_tickTime;
     GVAR(VehicleConfigCacheNamespace) setVariable ["lastRadioSettingUpdate",diag_tickTime];//Also updates Radio settings for safety
 
-    if !((missionNamespace getVariable ["TFAR_core_assignedItemsCache", []]) isEqualTo (assignedItems TFAR_currentUnit)) then {
+    if !((missionNamespace getVariable ["TFAR_core_assignedItemsCache", []]) isEqualTo _assignedItems) then {
         TFAR_core_cacheNonRadioItems = []; //Reset cache, used in radiosToRequestCount
     };
 
-    TFAR_core_assignedItemsCache = assignedItems TFAR_currentUnit;
+    TFAR_core_assignedItemsCache = _assignedItems;
 
-    //A picked up radio can already have its speakers on. The loadout event also fires on every shot
-    //(ammo count), so recalculate at most once per second instead of scanning the inventory each time.
+    //A picked up radio can already have its speakers on. Recalculate at most once per second.
     if (isNil QGVAR(speakersUpdatePending)) then {
         GVAR(speakersUpdatePending) = true;
         [{

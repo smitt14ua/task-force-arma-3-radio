@@ -42,7 +42,7 @@ if (!TFAR_currentNearPlayersProcessed) then {
         //GVAR(ObjectInterceptionCache) = createHashMap; // We don't need to reset, we will just overwrite when we insert anyway. Downside is that we accumulate all players that ever were on the server. But a hundred hashmap entries is fine.
         _playersToProcess call TFAR_fnc_objectInterceptionBulkToCache;
         #else
-        GVAR(ObjectInterceptionCache) = createHashMap; // The normal updates will write to cache, if we don't clear it we'll keep sending stale data
+        // TFAR_fnc_objectInterception keeps its results with time and positions and recalculates stale ones itself
         #endif
     };
 
@@ -191,7 +191,12 @@ if (_needNearPlayerScan) then {
 
 //Queue new updates to plugin if last one processed
 if (TFAR_currentNearPlayersProcessed) then {
-    call PROFCONTEXT_NORTN(TFAR_fnc_sendSpeakerRadios);//send Speaker radio infos to plugin Has to be here because it needs a variable from NearPlayer processing
+    //Speaker radios are sent every 0.5 seconds at most. The pass that just finished collected the players' speaker
+    //radios (TFAR_fnc_preparePositionCoordinates) only if a send was due, a send without them would mute those speakers.
+    if (GVAR(collectSpeakerRadios)) then {
+        call PROFCONTEXT_NORTN(TFAR_fnc_sendSpeakerRadios);//send Speaker radio infos to plugin Has to be here because it needs a variable from NearPlayer processing
+    };
+    GVAR(collectSpeakerRadios) = diag_tickTime - (GVAR(VehicleConfigCacheNamespace) getVariable ["TFAR_fnc_sendSpeakerRadioslastExec", -1]) >= 0.4;
     TFAR_currentNearPlayersProcessing = +TFAR_currentNearPlayers;//Copy array for processing
     TFAR_currentNearPlayersProcessed = false;
 };
