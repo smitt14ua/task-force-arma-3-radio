@@ -891,8 +891,25 @@ void processAllTangentRelease(TSServerID serverId, const std::vector<std::string
     const auto& nickname = tokens[1];//only copying for readability.. hope compiler optimizes that out
     auto clientData = clientDataDir->getClientData(nickname);
     if (!clientData) return;
+    const auto myClientData = clientDataDir->myClientData;
+    //Our own broadcast: the command thread already reset our state, and a late echo must not end a newer transmission
+    if (clientData == myClientData) return;
 
+    const bool wasTransmitting = clientData->currentTransmittingTangentOverType != sendingRadioType::LISTEN_TO_NONE;
     clientData->currentTransmittingTangentOverType = sendingRadioType::LISTEN_TO_NONE;
+    if (!wasTransmitting) return;
+
+    //Same as a RELEASED in processTangentPress: stop counting his transmission as received
+    const auto frequency = clientData->getCurrentTransmittingFrequency();
+    if (myClientData) {
+        auto found = myClientData->receivingFrequencies.find(frequency);
+        if (found != myClientData->receivingFrequencies.end()) {
+            myClientData->receivingTransmission -= 1;
+            myClientData->receivingFrequencies.erase(found);
+        }
+    }
+    clientData->range = 0;
+    clientData->setCurrentTransmittingFrequency(std::string("prev_").append(frequency));
 }
 
 void processTangentPress(TSServerID serverId, const std::vector<std::string_view> &tokens, std::string_view command) {
