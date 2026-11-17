@@ -21,8 +21,8 @@
 
 params ["_radio", ["_status", false]];
 
-_isLRRadio = _radio isEqualType [];
-_settings = [];
+private _isLRRadio = _radio isEqualType [];
+private _settings = [];
 
 if (_isLRRadio) then {
     _settings = (_radio call TFAR_fnc_getLrSettings);
@@ -30,8 +30,9 @@ if (_isLRRadio) then {
     _settings = (_radio call TFAR_fnc_getSwSettings);
 };
 
-if (isNil "_settings") then {//TFAR_fnc_getLrSettings may return Nil if some script in there is screwed up
+if (isNil "_settings") exitWith {//TFAR_fnc_getLrSettings may return Nil if some script in there is screwed up
     WARNING("_settings was Nil!");
+    false
 };
 
 if (count _this == 2) then {//want to set status

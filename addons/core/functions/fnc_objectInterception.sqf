@@ -36,7 +36,7 @@ GVAR(ObjectInterceptionCache) getOrDefaultCall [hashValue _this, {
     private _remoteParent = objectParent _this;
     private _count = {
         private _obj = (_x select 2);
-        !(_obj isEqualTo _localParent || _obj isEqualTo _remoteParent) && !isPlayer _obj
+        !isNull _obj && {!(_obj isEqualTo _localParent || _obj isEqualTo _remoteParent) && !isPlayer _obj} //objNull is terrain
       } count _ins;
 
     _count

@@ -26,4 +26,4 @@ private _splitResult = ("task_force_radio_pipe" callExtension format ["IS_SPEAKI
 //1 - is Speaking
 //2 - is Speaking on a Radio frequency that we can currently receive
 
-(_splitResult select 0) == "1"
+(_splitResult param [0, "0"]) == "1" //Extension may return an empty string

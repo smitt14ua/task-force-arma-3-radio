@@ -4,13 +4,13 @@
   Name: TFAR_fnc_eyeDepth
 
   Author: Garth de Wet (L-H)
-    returns the eyepos of a unit
+    returns the eye height of a unit above the water surface (negative when underwater)
 
   Arguments:
     unit <OBJECT>
 
   Return Value:
-    Position ASLW <ARRAY>
+    Eye height ASLW <NUMBER>
 
   Example:
     player call TFAR_fnc_eyeDepth;

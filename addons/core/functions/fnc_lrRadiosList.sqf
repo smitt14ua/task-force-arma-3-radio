@@ -51,7 +51,7 @@ if ((player call TFAR_fnc_isForcedCurator) and {TFAR_currentUnit == player}) the
 
 //If Player is remote Controlling return Player and controlled Unit's radios.
 if (_this isEqualTo TFAR_currentUnit && {player isNotEqualTo TFAR_currentUnit}) then {
-        _result append (player call TFAR_fnc_LRRadiosList);
+        {_result pushBackUnique _x} forEach (player call TFAR_fnc_LRRadiosList); //Override/active radio may be in both lists
 };
 
 

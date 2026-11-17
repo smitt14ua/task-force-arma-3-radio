@@ -10,13 +10,22 @@
     None
 
   Return Value:
-    active LR radio <ARRAY>
+    active LR radio, nil if there is none <ARRAY>
 
   Example:
     _radio = call TFAR_fnc_activeLRRadio;
 
   Public: Yes
 */
+
+//Reselect when the controlled unit changed (Zeus remote control and release), so its own radio becomes active
+private _activeRadioUnit = missionNamespace getVariable "TFAR_activeLrRadioUnit";
+if (isNil "_activeRadioUnit" || {_activeRadioUnit isNotEqualTo TFAR_currentUnit}) then {
+    if (!isNil "_activeRadioUnit") then {
+        TF_lr_active_radio = nil;
+    };
+    TFAR_activeLrRadioUnit = TFAR_currentUnit;
+};
 
 private _radios = TFAR_currentUnit call TFAR_fnc_lrRadiosList;
 
@@ -35,10 +44,10 @@ if (!isNil "TFAR_OverrideActiveLRRadio") exitWith {
 
     if (TFAR_currentUnit distance _distObject > TFAR_MAXREMOTELRRADIODISTANCE) then {
         TFAR_OverrideActiveLRRadio = nil;
-        TF_lr_active_radio
+        missionNamespace getVariable "TF_lr_active_radio" //nil-safe, there may be no LR radio
     } else {
         TFAR_OverrideActiveLRRadio
     };
 };
 
-TF_lr_active_radio
+missionNamespace getVariable "TF_lr_active_radio" //nil-safe, there may be no LR radio

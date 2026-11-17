@@ -22,7 +22,7 @@
 */
 params [["_unit", objNull, [objNull]]];
 
-if (isNull (objectParent _unit) || {!((objectParent _this) call TFAR_fnc_hasVehicleRadio)}) exitWith {nil};
+if (isNull (objectParent _unit) || {!((objectParent _unit) call TFAR_fnc_hasVehicleRadio)}) exitWith {nil};
 
 private _result = nil;
 private _vehicle = vehicle _unit;
