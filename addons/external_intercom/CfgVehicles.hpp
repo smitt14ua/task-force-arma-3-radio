@@ -46,7 +46,7 @@ class Extended_GetOutMan_EventHandlers {
             clientGetOutMan = QUOTE(params[ARR_3('_player', '_role', '_vehicle')]; if ( \
                 alive (_player) \
                 && isPlayer _player \
-                && (headgear (_player)) in TFAR_externalIntercomWirelessHeadgear \
+                && [_player] call TFAR_external_intercom_fnc_hasWirelessHeadgear \
                 && !((_role) isEqualTo 'cargo') \
                 && local _player \
                 && [ARR_3((typeOf _vehicle), 'TFAR_hasIntercom', 0)] call TFAR_fnc_getVehicleConfigProperty == 1 \

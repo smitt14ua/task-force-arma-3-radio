@@ -175,7 +175,7 @@ class bussole_radio_dialog {
         y = "0.4747 * safezoneH + safezoneY";
         w = "0.0216562 * safezoneW";
         h = "0.0297 * safezoneH";
-        action = "[TF_lr_dialog_radio, 0] call TFAR_fnc_setLrChannel; [""CH%1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 0] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_1);
     };
     class channel_02: HiddenButton {
@@ -184,7 +184,7 @@ class bussole_radio_dialog {
         y = "0.4758 * safezoneH + safezoneY";
         w = "0.0216562 * safezoneW";
         h = "0.0297 * safezoneH";
-        action = "[TF_lr_dialog_radio, 1] call TFAR_fnc_setLrChannel; [""CH%1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 1] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_2);
     };
     class channel_03: HiddenButton {
@@ -193,7 +193,7 @@ class bussole_radio_dialog {
         y = "0.4758 * safezoneH + safezoneY";
         w = "0.0216562 * safezoneW";
         h = "0.0297 * safezoneH";
-        action = "[TF_lr_dialog_radio, 2] call TFAR_fnc_setLrChannel; [""PRE %1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 2] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_3);
     };
     class channel_04: HiddenButton {
@@ -202,7 +202,7 @@ class bussole_radio_dialog {
         y = "0.5198 * safezoneH + safezoneY";
         w = "0.0221719 * safezoneW";
         h = "0.0308 * safezoneH";
-        action = "[TF_lr_dialog_radio, 3] call TFAR_fnc_setLrChannel; [""PRE %1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 3] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_4);
     };
     class channel_05: HiddenButton {
@@ -211,7 +211,7 @@ class bussole_radio_dialog {
         y = "0.5198 * safezoneH + safezoneY";
         w = "0.0216562 * safezoneW";
         h = "0.0297 * safezoneH";
-        action = "[TF_lr_dialog_radio, 4] call TFAR_fnc_setLrChannel; [""PRE %1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 4] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_5);
     };
     class channel_06: HiddenButton {
@@ -220,7 +220,7 @@ class bussole_radio_dialog {
         y = "0.5198 * safezoneH + safezoneY";
         w = "0.0216562 * safezoneW";
         h = "0.0297 * safezoneH";
-        action = "[TF_lr_dialog_radio, 5] call TFAR_fnc_setLrChannel; [""PRE %1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 5] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_6);
     };
     class channel_07: HiddenButton {
@@ -229,7 +229,7 @@ class bussole_radio_dialog {
         y = "0.5605 * safezoneH + safezoneY";
         w = "0.0216562 * safezoneW";
         h = "0.0297 * safezoneH";
-        action = "[TF_lr_dialog_radio, 6] call TFAR_fnc_setLrChannel; [""PRE %1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 6] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_7);
     };
     class channel_08: HiddenButton {
@@ -238,7 +238,7 @@ class bussole_radio_dialog {
         y = "0.5605 * safezoneH + safezoneY";
         w = "0.0216562 * safezoneW";
         h = "0.0297 * safezoneH";
-        action = "[TF_lr_dialog_radio, 7] call TFAR_fnc_setLrChannel; [""PRE %1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 7] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_8);
     };
     class channel_09: HiddenButton {
@@ -247,7 +247,7 @@ class bussole_radio_dialog {
         y = "0.5616 * safezoneH + safezoneY";
         w = "0.0216562 * safezoneW";
         h = "0.0297 * safezoneH";
-        action = "[TF_lr_dialog_radio, 8] call TFAR_fnc_setLrChannel; [""PRE %1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio, 8] call TFAR_fnc_setLrChannel; call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
         tooltip = ECSTRING(core,radio_channel_9);
     };
 };

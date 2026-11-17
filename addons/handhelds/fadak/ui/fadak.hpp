@@ -34,6 +34,7 @@ class fadak_radio_dialog {
         "channel_edit",
         "stereo",
         "additional",
+        "previous_channel",
         "speakers"};
 
     class background: RscBackPicture {

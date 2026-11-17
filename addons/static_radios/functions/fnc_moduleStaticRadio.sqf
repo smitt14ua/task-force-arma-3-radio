@@ -90,7 +90,6 @@ if (_classname isEqualType "" && {_classname call TFAR_fnc_isRadio} && {_classna
 if (_classname call TFAR_fnc_isLRRadio && {[[_classname,"radio_settings"]] call TFAR_fnc_hasSettings}) then {
     _settings = [_classname,"radio_settings"] call TFAR_fnc_getLrSettings;
 };
-diag_log ["set", _settings];
 
 private _FreqControl = _display displayCtrl 2611804;
 private _ChannelControl = _display displayCtrl 2611806;

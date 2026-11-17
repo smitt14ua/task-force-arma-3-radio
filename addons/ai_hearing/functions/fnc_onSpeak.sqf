@@ -21,6 +21,6 @@
 
 params [["_unit", objNull, [objNull]], ["_isSpeaking", false, [true]]];
 
-if ((!local _unit) || {!alive _unit} || {(vehicle _unit) call TFAR_fnc_isVehicleIsolated}) exitWith {};
+if (!_isSpeaking || {!local _unit} || {!alive _unit} || {(vehicle _unit) call TFAR_fnc_isVehicleIsolated}) exitWith {};
 
 [_unit, TF_speak_volume_meters] call FUNC(revealInArea);

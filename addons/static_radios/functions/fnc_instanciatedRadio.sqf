@@ -19,7 +19,7 @@
 */
 params ["_radioContainer"];
 
-_radioClass = (((getItemCargo _radioContainer) select 0) select 0);
+private _radioClass = ((getItemCargo _radioContainer) select 0) param [0, ""];
 if (
     (getItemCargo _radioContainer) isEqualTo [[],[]]
     &&
@@ -31,7 +31,7 @@ if (
 if (_radioContainer call TFAR_fnc_isLRRadio) exitWith {_radioContainer};
 
 
-if !(_radioClass call TFAR_fnc_isPrototypeRadio) exitWith {_radioClass};
+if (_radioClass isEqualTo "" || {!(_radioClass call TFAR_fnc_isPrototypeRadio)}) exitWith {_radioClass};
 
 private _radioInstanciated = format ["%1_%2", _radioClass, ([[_radioClass]] call TFAR_fnc_instanciateRadios) select 0];
 

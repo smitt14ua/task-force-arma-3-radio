@@ -25,6 +25,9 @@
 [
     QGVAR(reveal),
     {
-        (_this select 0) reveal [(_this select 1), (_this select 2)];
+        params ["_ai", "_target", "_value"];
+        // knowsAbout is only accurate where the AI is local
+        if (_ai knowsAbout _target > 1.5) exitWith {};
+        _ai reveal [_target, _value];
     }
 ] call CBA_fnc_addEventHandler;

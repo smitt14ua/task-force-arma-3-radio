@@ -22,7 +22,7 @@ params ["_radioContainer","_frequencies"];
 
 CBA_SETTINGS_GUARD(TFAR_static_radios_fnc_setFrequencies);
 
-_radio_id = _radioContainer call TFAR_static_radios_fnc_instanciatedRadio;
+private _radio_id = _radioContainer call TFAR_static_radios_fnc_instanciatedRadio;
 
 if (_radio_id call TFAR_fnc_isLRRadio) then {
     _radio_id = [_radio_id, "radio_settings"];
@@ -33,7 +33,7 @@ if (_radio_id call TFAR_fnc_isLRRadio) then {
 
     [_radio_id, _settings] call TFAR_fnc_setLrSettings;
 } else {
-    _settings = _radio_id call TFAR_fnc_getSwSettings;
+    private _settings = _radio_id call TFAR_fnc_getSwSettings;
 
     //#TODO if _frequencies has less than 9 elements random-generate the rest
     _settings set [TFAR_FREQ_OFFSET, _frequencies];
