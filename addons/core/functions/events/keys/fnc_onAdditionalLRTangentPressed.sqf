@@ -32,4 +32,5 @@ private _currentFrequency = [_radio, _additionalChannel + 1] call TFAR_fnc_getCh
 [_radio, _additionalChannel, _currentFrequency, true] call TFAR_fnc_doLRTransmit;
 
 TF_tangent_lr_pressed = true;
+TF_tangent_lr_additional = true;
 false

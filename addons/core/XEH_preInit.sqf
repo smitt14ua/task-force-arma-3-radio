@@ -97,6 +97,9 @@ if (hasInterface) then {//Clientside Variables
 
     TF_tangent_sw_pressed = false;
     TF_tangent_lr_pressed = false;
+    //Which tangent set the pressed flag (true = additional), so only that tangent's release ends the transmission
+    TF_tangent_sw_additional = false;
+    TF_tangent_lr_additional = false;
 
     TF_speakerDistance = 20;
     TF_speak_volume_level = "normal";

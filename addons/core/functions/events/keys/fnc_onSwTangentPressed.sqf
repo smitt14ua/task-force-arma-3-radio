@@ -32,4 +32,5 @@ private _currentFrequency = [_radio, _channel + 1] call TFAR_fnc_getChannelFrequ
 [_radio, _channel, _currentFrequency, false] call TFAR_fnc_doSRTransmit;
 
 TF_tangent_sw_pressed = true;
+TF_tangent_sw_additional = false;
 false
