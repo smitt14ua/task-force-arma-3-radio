@@ -77,6 +77,11 @@ _player setVariable [format ["TFAR_IntercomSlot_%1", (netId _player)], _intercom
 
 (QGVAR(PhoneConnectionIndicatorRsc) call BIS_fnc_rscLayer) cutRsc [QGVAR(PhoneConnectionIndicatorRsc), "PLAIN", 0, true];
 
+// Every connection gets a new token. Keep-alive/reconnect loops of an older connection (e.g. phone -> wireless on the
+// same vehicle) see a different token and stop instead of disconnecting the new link.
+private _connectionToken = (_player getVariable ["TFAR_ExternalIntercomConnectionToken", 0]) + 1;
+_player setVariable ["TFAR_ExternalIntercomConnectionToken", _connectionToken];
+
 private _playerEventhandlers = [];
 
 if (_wireless) then {
@@ -85,62 +90,72 @@ if (_wireless) then {
 
     // Keep connection alive until out of range or disconnected
     [{
-        params ["_vehicle", "_player", "_intercomMaxRange", "_headgear"];
+        params ["_vehicle", "_player", "_intercomMaxRange", "_headgear", "_connectionToken"];
         (_vehicle distance _player) > _intercomMaxRange
         || !alive _vehicle
         || !((_player getVariable ["TFAR_ExternalIntercomVehicle", objNull]) isEqualTo _vehicle)
         || !(_headgear isEqualTo (headgear _player))
+        || !((_player getVariable ["TFAR_ExternalIntercomConnectionToken", -1]) isEqualTo _connectionToken)
     }, {
-        params ["_vehicle", "_player", "_intercomMaxRange", "_headgear"];
-        // Already disconnected, or connected to another vehicle in the meantime
+        params ["_vehicle", "_player", "_intercomMaxRange", "_headgear", "_connectionToken"];
+        // Already disconnected, or connected again (to this or another vehicle) in the meantime
         if !((_player getVariable ["TFAR_ExternalIntercomVehicle", objNull]) isEqualTo _vehicle) exitWith {};
+        if !((_player getVariable ["TFAR_ExternalIntercomConnectionToken", -1]) isEqualTo _connectionToken) exitWith {};
 
         [_vehicle, _player] call TFAR_external_intercom_fnc_disconnect;
 
         // Allow automatic reconnect for wireless devices if they run out then back into range
-        if (alive _vehicle && _headgear isEqualTo (headgear _player)) then {
+        if (alive _vehicle && alive _player && _headgear isEqualTo (headgear _player)) then {
             _player setVariable ["TFAR_ExternalIntercomOutOfRangeVehicle", _vehicle];
             [{
-                params ["_vehicle", "_player", "_intercomMaxRange", "_headgear"];
+                params ["_vehicle", "_player", "_intercomMaxRange", "_headgear", "_connectionToken"];
                 (_vehicle distance _player) < _intercomMaxRange
                 || !alive _vehicle
+                || !alive _player
                 || !(_headgear isEqualTo (headgear _player))
                 || !((_player getVariable ["TFAR_ExternalIntercomOutOfRangeVehicle", objNull]) isEqualTo _vehicle)
+                || !((_player getVariable ["TFAR_ExternalIntercomConnectionToken", -1]) isEqualTo _connectionToken)
             }, {
-                params ["_vehicle", "_player", "_intercomMaxRange", "_headgear"];
+                params ["_vehicle", "_player", "_intercomMaxRange", "_headgear", "_connectionToken"];
 
                 if (
                     alive _vehicle
+                    && alive _player
                     && _headgear isEqualTo (headgear _player)
                     && (_player getVariable ["TFAR_ExternalIntercomOutOfRangeVehicle", objNull]) isEqualTo _vehicle
+                    && (_player getVariable ["TFAR_ExternalIntercomConnectionToken", -1]) isEqualTo _connectionToken
                 ) then {
                     [_vehicle, _player, [true]] call TFAR_external_intercom_fnc_connect;
                 };
             }, _this] call CBA_fnc_waitUntilAndExecute;
         };
-    }, [_vehicle, _player, _intercomMaxRange, _headgear]] call CBA_fnc_waitUntilAndExecute;
+    }, [_vehicle, _player, _intercomMaxRange, _headgear, _connectionToken]] call CBA_fnc_waitUntilAndExecute;
 
 } else {
     private _interactionPointRelative = [_vehicle] call TFAR_external_intercom_fnc_getInteractionPoint;
 
     // Keep connection alive until out of range or disconnected
     [{
-        params ["_vehicle", "_player", "_interactionPointRelative"];
+        params ["_vehicle", "_player", "_interactionPointRelative", "_connectionToken"];
         ((_vehicle modelToWorld _interactionPointRelative) distance _player) > _vehicle getVariable ["TFAR_externalIntercomMaxRange_Phone", TFAR_externalIntercomMaxRange_Phone]
         || !alive _vehicle
         || !((_player getVariable ["TFAR_ExternalIntercomVehicle", objNull]) isEqualTo _vehicle)
+        || !((_player getVariable ["TFAR_ExternalIntercomConnectionToken", -1]) isEqualTo _connectionToken)
     }, {
-        params ["_vehicle", "_player"];
-        // Already disconnected, or connected to another vehicle in the meantime
+        params ["_vehicle", "_player", "_interactionPointRelative", "_connectionToken"];
+        // Already disconnected, or connected again (to this or another vehicle) in the meantime
         if !((_player getVariable ["TFAR_ExternalIntercomVehicle", objNull]) isEqualTo _vehicle) exitWith {};
+        if !((_player getVariable ["TFAR_ExternalIntercomConnectionToken", -1]) isEqualTo _connectionToken) exitWith {};
         [_vehicle, _player] call TFAR_external_intercom_fnc_disconnect;
-    }, [_vehicle, _player, _interactionPointRelative]] call CBA_fnc_waitUntilAndExecute;
+    }, [_vehicle, _player, _interactionPointRelative, _connectionToken]] call CBA_fnc_waitUntilAndExecute;
 
     private _handset = createSimpleObject [QPATHTOF(data\TFAR_handset.p3d), _player selectionPosition "head"];
     _handset attachTo [_player, [-0.14,-0.02,0.02], "head", true];
     _handset setVectorDirAndUp [[-2.5,0.8,0.25],[-1,-1,1]];
     private _ropeID = ropeCreate [_vehicle, _interactionPointRelative vectorAdd [0,0.2,0], _handset, "plug", (_vehicle getVariable ["TFAR_externalIntercomMaxRange_Phone", TFAR_externalIntercomMaxRange_Phone]) - 1, ["", [0,0,-1]], ["", [0,0,-1]], "TFAR_RopeSmallWire"];
     _vehicle setVariable ["TFAR_ExternalIntercomRopeIDs", [_ropeID, _handset], true];
+    // Also stored on the player, so disconnect can clean up even if the vehicle was deleted in the meantime
+    _player setVariable ["TFAR_ExternalIntercomRopeIDs", [_ropeID, _handset], true];
 
     // Eventhandlers
     if (_vehicle isNil "TFAR_ExternalIntercomRopeEH") then {

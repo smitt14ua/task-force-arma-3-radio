@@ -137,7 +137,7 @@ class anarc164_radio_dialog {
         w = "0.0374025 * safezoneW";
         h = "0.0700156 * safezoneH";
         tooltip = ECSTRING(core,set_additional);
-        action ="playSound 'TFAR_rotatorPush';[TF_lr_dialog_radio,TF_lr_dialog_radio call TFAR_fnc_getLrChannel] call TFAR_fnc_setAdditionalLrChannel;call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action ="playSound 'TFAR_rotatorPush';[TF_lr_dialog_radio,TF_lr_dialog_radio call TFAR_fnc_getLrChannel] call TFAR_fnc_setAdditionalLrChannel;[""%1""] call TFAR_fnc_updateLRDialogToChannel;[TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
     };
     class speakers: HiddenFlip {
         idc = IDC_ANARC164_SPEAKERS;

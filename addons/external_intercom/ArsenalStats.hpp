@@ -7,8 +7,8 @@ class ace_arsenal_stats {
         stats[] = {"TFAR_ExternalIntercomWirelessCapable"};
         showBar = 0;
         showText = 1;
-        textStatement = "params ['_stats','_config']; format ['%1',getNumber (_config >> _stats select 0) > 0 || {(configName _config) in TFAR_externalIntercomWirelessHeadgear}]";
-        condition = "params ['','_config']; getNumber (_config >> 'TFAR_ExternalIntercomWirelessCapable') > 0 || {(configName _config) in TFAR_externalIntercomWirelessHeadgear}";
+        textStatement = "params ['_stats','_config']; format ['%1',getNumber (_config >> _stats select 0) > 0 || {(configName _config) in (missionNamespace getVariable ['TFAR_externalIntercomWirelessHeadgear', []])}]";
+        condition = "params ['','_config']; getNumber (_config >> 'TFAR_ExternalIntercomWirelessCapable') > 0 || {(configName _config) in (missionNamespace getVariable ['TFAR_externalIntercomWirelessHeadgear', []])}";
         tabs[] = {{6},{}}; // Arrays of tabs, left array is left tabs, right array is right tabs.
     };
 };

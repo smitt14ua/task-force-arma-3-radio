@@ -241,7 +241,7 @@ class mr6000l_radio_dialog {
         w = "0.0334654 * safezoneW";
         h = "0.0560125 * safezoneH";
         tooltip = ECSTRING(core,set_additional);
-        action = "[TF_lr_dialog_radio,TF_lr_dialog_radio call TFAR_fnc_getLrChannel] call TFAR_fnc_setAdditionalLrChannel; call TFAR_fnc_updateLRDialogToChannel; [TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
+        action = "[TF_lr_dialog_radio,TF_lr_dialog_radio call TFAR_fnc_getLrChannel] call TFAR_fnc_setAdditionalLrChannel; [""PRE %1""] call TFAR_fnc_updateLRDialogToChannel; [TF_lr_dialog_radio, true] call TFAR_fnc_showRadioInfo;";
     };
     class speakers: HiddenButton {
         idc = IDC_MR6000L_SPEAKERS;

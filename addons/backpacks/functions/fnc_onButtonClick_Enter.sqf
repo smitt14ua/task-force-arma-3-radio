@@ -35,4 +35,5 @@ if ((_frequency >= TFAR_MIN_ASIP_FREQ) and {_frequency <= TFAR_MAX_ASIP_FREQ}) t
 } else {
     hint formatText [localize 'STR_TFAR_CORE_incorrect_frequency', TFAR_MIN_ASIP_FREQ, TFAR_MAX_ASIP_FREQ];
 };
-call TFAR_fnc_updateLRDialogToChannel;
+// Use the radio's own dialog update so its channel label format is kept
+[] call compile ([TF_lr_dialog_radio select 0, "tf_dialogUpdate", "call TFAR_fnc_updateLRDialogToChannel;"] call TFAR_fnc_getLrRadioProperty);

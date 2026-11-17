@@ -10,10 +10,8 @@
     ["", false, FUNC(settingForceAlphaNumericArray)],
     1,
     {
-        if (isServer) then {
-            TFAR_externalIntercomWirelessHeadgear = [_this] call FUNC(parseClassnamesInput);
-            publicVariable "TFAR_externalIntercomWirelessHeadgear";
-        };
+        // Global setting: the value (and this script) reaches every machine, so each one parses it locally
+        TFAR_externalIntercomWirelessHeadgear = [_this] call FUNC(parseClassnamesInput);
     }
 ] call CBA_Settings_fnc_init;
 
@@ -25,19 +23,20 @@
     [[0, 1, 2], [LSTRING(SETTING_ENABLE_0), LSTRING(SETTING_ENABLE_1), LSTRING(SETTING_ENABLE_2)], 0],
     1,
     {
-        _vehicle = ACE_Player getVariable "TFAR_ExternalIntercomVehicle";
+        private _unit = missionNamespace getVariable ["TFAR_currentUnit", objNull];
+        private _vehicle = _unit getVariable "TFAR_ExternalIntercomVehicle";
         if (_this > 0 && !isNil "_vehicle") then {
             private _preChangeSpeakers = +(_vehicle getVariable ["TFAR_ExternalIntercomSpeakers", [objNull, []]]);
-            [_vehicle, ACE_Player] call TFAR_external_intercom_fnc_disconnect;
+            [_vehicle, _unit] call TFAR_external_intercom_fnc_disconnect;
 
             if (_this isEqualTo 2) exitWith {};
 
             [
                 _vehicle,
-                ACE_Player,
-                [(_preChangeSpeakers select 1) find ACE_Player > -1] // Is wireless?
+                _unit,
+                [(_preChangeSpeakers select 1) find _unit > -1] // Is wireless?
             ] call TFAR_external_intercom_fnc_connect;
-            [parseText CSTRING(RESET)] call TFAR_fnc_showHint;
+            [parseText LLSTRING(RESET)] call TFAR_fnc_showHint;
         };
     }
 ] call CBA_Settings_fnc_init;

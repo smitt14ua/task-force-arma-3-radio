@@ -35,4 +35,5 @@ if ((_frequency >= TFAR_MIN_SW_FREQ) and {_frequency <= TFAR_MAX_SW_FREQ}) then 
 } else {
     hint formatText [ARR_3(localize 'STR_TFAR_CORE_incorrect_frequency',TFAR_MIN_SW_FREQ,TFAR_MAX_SW_FREQ)]
 };
-call TFAR_fnc_updateSWDialogToChannel;
+// Use the radio's own dialog update so its channel label format is kept
+[] call compile ([TF_sw_dialog_radio, "tf_dialogUpdate", "call TFAR_fnc_updateSWDialogToChannel;"] call TFAR_fnc_getWeaponConfigProperty);

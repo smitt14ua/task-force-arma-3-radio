@@ -20,9 +20,12 @@
 */
 params ["_vehicle"];
 
-// Cache position
-private _cacheName = format ["%1_externalIntercomInteractionPoint", _vehicle];
-private _cachedEntry = EGVAR(core,VehicleConfigCacheNamespace) getVariable _cacheName;
+// Calculated positions are cached on the vehicle itself (gone with the vehicle), config positions per vehicle type
+private _cachedEntry = _vehicle getVariable "TFAR_externalIntercomInteractionPoint";
+if (!isNil "_cachedEntry") exitWith {_cachedEntry};
+
+private _cacheName = format ["%1_externalIntercomInteractionPoint", typeOf _vehicle];
+_cachedEntry = EGVAR(core,VehicleConfigCacheNamespace) getVariable _cacheName;
 if (!isNil "_cachedEntry") exitWith {_cachedEntry};
 
 private _customPosition = [(typeOf _vehicle), "TFAR_ExternalIntercomInteractionPoint"] call TFAR_fnc_getVehicleConfigProperty;
@@ -55,5 +58,5 @@ if (_hitIndex == -1) exitWith {_externalIntercomInset};
 
 private _position = _vehicle worldToModel ASLToAGL (_intersections select _hitIndex select 0);
 TRACE_1("Calculated Position set to: %1",_position);
-EGVAR(core,VehicleConfigCacheNamespace) setVariable [_cacheName, _position];
+_vehicle setVariable ["TFAR_externalIntercomInteractionPoint", _position];
 _position;

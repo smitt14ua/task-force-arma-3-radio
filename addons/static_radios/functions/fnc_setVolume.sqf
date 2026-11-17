@@ -40,6 +40,6 @@ if (_radio_id call TFAR_fnc_isLRRadio) then {
     [_radio_id, _settings] call TFAR_fnc_setSwSettings;
 };
 
-if (_volume+10 > TF_speakerDistance) then { //If volume is bigger than normal hearing Range.. Increase hearing range.
+if (_volume+10 > (missionNamespace getVariable ["TF_speakerDistance", 20])) then { //If volume is bigger than normal hearing Range.. Increase hearing range.
     missionNamespace setVariable ["TF_speakerDistance",_volume+20,true];
 };
