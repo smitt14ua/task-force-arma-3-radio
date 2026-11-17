@@ -176,6 +176,7 @@ if (player call TFAR_fnc_isForcedCurator) then {
     player call TFAR_fnc_releaseAllTangents;
 
     TFAR_lastLoadoutChange = diag_tickTime; //Switching unit also switches loadout
+    TFAR_core_cacheNonRadioItems = []; //Reset cache, used in radiosToRequestCount
     GVAR(VehicleConfigCacheNamespace) setVariable ["lastRadioSettingUpdate",diag_tickTime]; //And changes Radios
 
     if !(TFAR_currentUnit getVariable ["TFAR_HandlersSet",false]) then {
