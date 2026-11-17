@@ -28,7 +28,8 @@
   Public: Yes
 */
 
-private _sw_settings = [0, TFAR_default_radioVolume, [], 0, nil, -1, 0, getPlayerUID player, false, true, TFAR_default_radioVolume];
+// Index 10 (additional channel volume) stays unset so it follows the main volume until set explicitly.
+private _sw_settings = [0, TFAR_default_radioVolume, [], 0, nil, -1, 0, getPlayerUID player, false, true];
 private _set = false;
 private _sw_frequencies = [];
 

@@ -37,7 +37,8 @@ if (_dialogIdd < 0) exitWith {ctrlSetText [_frequencyControlIdc, _frequency];};
 
 disableSerialization;
 private _frequencyControl = (findDisplay _dialogIdd) displayCtrl _frequencyControlIdc;
-if (isNull _frequencyControl) exitWith {};
+// Inherited configs can point at a different dialog; fall back to plain text.
+if (isNull _frequencyControl) exitWith {ctrlSetText [_frequencyControlIdc, _frequency];};
 
 // Presentation state must not be inferred from the current name table: that
 // table can change while the dialog is open, and names may themselves be numeric.

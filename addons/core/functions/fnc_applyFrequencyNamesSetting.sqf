@@ -33,7 +33,7 @@ if (isServer) then {
     _definitions = _definitions select {!((_x select 0) in _pendingFrequencies)};
     private _namedOverrides = _pending select {(_x select 1) isNotEqualTo ""};
     // Honor already accepted scripted names even when CBA supplies a full table.
-    _definitions resize ((count _definitions) min (TFAR_MAX_FREQUENCY_NAMES - count _namedOverrides));
+    _definitions resize (((count _definitions) min (TFAR_MAX_FREQUENCY_NAMES - count _namedOverrides)) max 0);
     _definitions append _namedOverrides;
     if (missionNamespace getVariable [QGVAR(SettingsInitialized), false]) then {
         missionNamespace setVariable [_pendingVariable, nil];

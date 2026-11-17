@@ -30,7 +30,8 @@
 
 params [["_generateFrequencies", true, [true]]];
 
-private _lr_settings = [0, TFAR_default_radioVolume, [], 0, nil, -1, 0, nil, false, true, TFAR_default_radioVolume];
+// Index 10 (additional channel volume) stays unset so it follows the main volume until set explicitly.
+private _lr_settings = [0, TFAR_default_radioVolume, [], 0, nil, -1, 0, nil, false, true];
 private _lr_frequencies = [];
 if (!_generateFrequencies) then {
     for "_i" from 0 to TFAR_MAX_LR_CHANNELS step 1 do {
