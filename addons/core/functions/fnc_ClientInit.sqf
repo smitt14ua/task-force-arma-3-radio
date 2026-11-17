@@ -170,8 +170,10 @@ if (player call TFAR_fnc_isForcedCurator) then {
     // Needs to be assigned between the tangent releases
     TFAR_currentUnit = _newUnit;
 
-    // Release pressed tangents as new unit
-    _newUnit call TFAR_fnc_releaseAllTangents;
+    // Release pressed tangents as new unit. The plugin knows us by the name of player (also while remote controlling
+    // a unit, see TFAR_fnc_processPlayerPositions), so pass player: releaseAllTangents takes the name from its argument.
+    // The in-game release only runs for TFAR_currentUnit, but the release as old unit above already did it.
+    player call TFAR_fnc_releaseAllTangents;
 
     TFAR_lastLoadoutChange = diag_tickTime; //Switching unit also switches loadout
     GVAR(VehicleConfigCacheNamespace) setVariable ["lastRadioSettingUpdate",diag_tickTime]; //And changes Radios

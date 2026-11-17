@@ -23,7 +23,6 @@
 ["full_duplex",missionNamespace getVariable ["TFAR_fullDuplex",true]] call TFAR_fnc_setPluginSetting;
 ["addon_version",TFAR_ADDON_VERSION] call TFAR_fnc_setPluginSetting;
 ["serious_channelPassword",missionNamespace getVariable ["TFAR_Teamspeak_Channel_Password","123"]] call TFAR_fnc_setPluginSetting;
-["serious_channelName",missionNamespace getVariable ["TFAR_Teamspeak_Channel_Name","TaskForceRadio"]] call TFAR_fnc_setPluginSetting;//#TODO wiki entry
 ["intercomVolume",missionNamespace getVariable ["TFAR_intercomVolume",0.3]] call TFAR_fnc_setPluginSetting;
 ["intercomDucking",missionNamespace getVariable ["TFAR_intercomDucking",0.2]] call TFAR_fnc_setPluginSetting;
 ["intercomEnabled",missionNamespace getVariable ["TFAR_enableIntercom",true]] call TFAR_fnc_setPluginSetting;
@@ -39,5 +38,11 @@
 ["noAutomoveSpectator", missionNamespace getVariable ["TFAR_noAutomoveSpectator", true]] call TFAR_fnc_setPluginSetting;
 ["allowDebugging", missionNamespace getVariable ["TFAR_allowDebugging", false]] call TFAR_fnc_setPluginSetting;
 ["muteSpectators", missionNamespace getVariable ["TFAR_muteSpectators", false]] call TFAR_fnc_setPluginSetting;
+
+//Setting the channel name moves us into that channel, using the password set at that moment. The plugin takes
+//queued messages newest first, so send the name last and later, once the password has been applied.
+[{
+    ["serious_channelName",missionNamespace getVariable ["TFAR_Teamspeak_Channel_Name","TaskForceRadio"]] call TFAR_fnc_setPluginSetting;//#TODO wiki entry
+}, [], 0.1] call CBA_fnc_waitAndExecute;
 
 //If you add things that player could change in Mission call this PFH or tell players in WIKI

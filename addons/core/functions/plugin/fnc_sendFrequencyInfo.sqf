@@ -33,6 +33,9 @@ GVAR(VehicleConfigCacheNamespace) setVariable ["TFAR_fnc_sendFrequencyInfo_lastE
 // send frequencies
 private _freq = ["No_SW_Radio"];
 private _freq_lr = ["No_LR_Radio"];
+//[frequency, entry] of the selected channels and of the additional channels, see the size limit below
+private _swEntries = [[], []];
+private _lrEntries = [[], []];
 
 private _isolated_and_inside = TFAR_currentUnit call TFAR_fnc_vehicleIsIsolatedAndInside;
 private _depth = TFAR_currentUnit call TFAR_fnc_eyeDepth;
@@ -59,7 +62,7 @@ if (((count _swRadios > 0) || _currentUnitIsRemote) && {[TFAR_currentUnit, _isol
                 private _radioId = _x;
                 {
                     _x params ["_frequency", "_volume", "_stereo"];
-                    _freq pushBack format ["%1|%2|%3|%4", _frequency, _volume, _stereo, _radioId];
+                    (_swEntries select (_forEachIndex min 1)) pushBack [_frequency, format ["%1|%2|%3|%4", _frequency, _volume, _stereo, _radioId]];
                 } forEach (_x call TFAR_fnc_getRadioChannelSettings);
             };
         };
@@ -84,7 +87,7 @@ if (((count _lrRadios > 0) || _currentUnitIsRemote) && {[TFAR_currentUnit, _isol
                 private _radioType = typeOf (_x select 0);
                 {
                     _x params ["_frequency", "_volume", "_stereo"];
-                    _freq_lr pushBack format ["%1|%2|%3|%4", _frequency, _volume, _stereo, _radioType];
+                    (_lrEntries select (_forEachIndex min 1)) pushBack [_frequency, format ["%1|%2|%3|%4", _frequency, _volume, _stereo, _radioType]];
                 } forEach (_x call TFAR_fnc_getRadioChannelSettings);
             };
         };
@@ -92,20 +95,54 @@ if (((count _lrRadios > 0) || _currentUnitIsRemote) && {[TFAR_currentUnit, _isol
 };
 private _alive = alive TFAR_currentUnit;
 
-private _nickname = if (_alive) then {name player} else {profileName};
-
-_nickname = (TFAR_currentUnit getVariable ["TFAR_unitName", _nickname]);
+//The plugin renames our TeamSpeak client to this name, so it has to be the name the other clients send our POS with
+//(TFAR_fnc_processPlayerPositions): taken from player, also while remote controlling a unit.
+//Cache the name while alive: a dead unit's name isn't usable, and profileName lacks the " (2)" Arma adds to duplicate names.
+private _nickname = if (alive player) then {
+    private _name = name player;
+    player setVariable [QGVAR(aliveName), _name];
+    _name
+} else {
+    player getVariable [QGVAR(aliveName), profileName]
+};
+_nickname = player getVariable ["TFAR_unitName", _nickname];
+if (player getVariable ["TFAR_forceSpectator", false]) then {
+    _nickname = player getVariable ["TFAR_spectatorName", _nickname];
+};
 
 private _globalVolume = TFAR_currentUnit getVariable ["tf_globalVolume",1.0];//used API variable. Don't change
 
 //smaller value == bigger range
 private _receivingDistanceMultiplicator = (TFAR_currentUnit getVariable ["tf_receivingDistanceMultiplicator",1.0]) * (1/TFAR_globalRadioRangeCoef);
 
-//Async call will always return "OK"
-private _request = format["FREQ	%1	%2	%3	%4	%5	%6	%7	%8	%9	%10~",//#TODO reorder
+private _fnc_buildRequest = {format["FREQ	%1	%2	%3	%4	%5	%6	%7	%8	%9	%10~",//#TODO reorder
     _freq, _freq_lr,
     _alive,
     TF_speak_volume_meters min TF_max_voice_volume,
-    _nickname, waves, TF_terrain_interception_coefficient, _globalVolume, _receivingDistanceMultiplicator, TF_speakerDistance];
+    _nickname, waves, TF_terrain_interception_coefficient, _globalVolume, _receivingDistanceMultiplicator, TF_speakerDistance]};
 
-"task_force_radio_pipe" callExtension _request;
+//The plugin keeps one entry per frequency (the last one) and the extension drops messages over 2040 bytes.
+//Send each frequency once, selected channels before additional channels, and stop adding entries when full.
+//An entry takes its length plus 2 quotes and a comma in the formatted array.
+private _remaining = 2040 - count (call _fnc_buildRequest);
+private _seenFrequencies = [createHashMap, createHashMap];
+{
+    _x params ["_target", "_entries", "_seen"];
+    {
+        _x params ["_frequency", "_entry"];
+        private _size = count _entry + 3;
+        if (!(_frequency in _seen) && {_size <= _remaining}) then {
+            _seen set [_frequency, true];
+            _target pushBack _entry;
+            _remaining = _remaining - _size;
+        };
+    } forEach _entries;
+} forEach [
+    [_freq, _swEntries select 0, _seenFrequencies select 0],
+    [_freq_lr, _lrEntries select 0, _seenFrequencies select 1],
+    [_freq, _swEntries select 1, _seenFrequencies select 0],
+    [_freq_lr, _lrEntries select 1, _seenFrequencies select 1]
+];
+
+//Async call will always return "OK"
+"task_force_radio_pipe" callExtension (call _fnc_buildRequest);
