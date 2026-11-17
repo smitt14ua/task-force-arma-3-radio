@@ -1,12 +1,8 @@
 
-class RscCombo;
 class RscText;
 class RscEdit;
-class RscPicture;
-class RscTree;
 class RscControlsGroupNoScrollbars;
 class RscCheckBox;
-class RscSlider;
 //26118 == TFAR
 class ctrlXSliderH;
 
@@ -126,8 +122,6 @@ class Title;
 class Content;
 class controls;
 class RscDisplayAttributes;
-class RscAttributeOwners;
-class RscAttributeDiaryRecord;
 class RscDisplayAttributesModuleTFARStaticRadio: RscDisplayAttributes {
     //scriptName="RscDisplayAttributesModuleTFARStaticRadio";
     //scriptPath="CuratorDisplays";

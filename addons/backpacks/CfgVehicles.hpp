@@ -1,6 +1,5 @@
 class CfgVehicles {
     class ReammoBox;
-    class Item_Base_F;
 
     class Bag_Base: ReammoBox {
         tf_hasLRradio = 0;

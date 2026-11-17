@@ -17,14 +17,6 @@
             <Italian>Sconnettiti dall'interfono</Italian>
             <Ukrainian>Відключитися від інтеркому</Ukrainian>
         </Key>
-        <Key ID="STR_TFAR_EXTERNAL_INTERCOM_WIRELESS_SELFACTIONS">
-            <Original>Wireless Intercom</Original>
-            <English>Wireless Intercom</English>
-            <Czech>Bezdrátový interkom</Czech>
-            <Russian>Беспроводной интерком</Russian>
-            <Italian>Interfono wireless</Italian>
-            <Ukrainian>Бездротовий інтерком</Ukrainian>
-        </Key>
         <Key ID="STR_TFAR_EXTERNAL_INTERCOM_PICKUP_PHONE">
             <Original>Pickup Intercom Phone</Original>
             <English>Pickup Intercom Phone</English>

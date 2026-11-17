@@ -29,7 +29,7 @@ private _trimString = {
     while {count _characters > 0 && {(_characters select 0) <= 32}} do {
         _characters deleteAt 0;
     };
-    while {count _characters > 0 && {(_characters select (count _characters - 1)) <= 32}} do {
+    while {count _characters > 0 && {(_characters select -1) <= 32}} do {
         _characters deleteAt (count _characters - 1);
     };
     toString _characters

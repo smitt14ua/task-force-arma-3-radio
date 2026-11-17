@@ -65,7 +65,6 @@ class RscBackPicture;
 class RscEditLCD;
 class HiddenButton;
 class HiddenRotator;
-class HiddenFlip;
 
 #include "anprc148jem\ui\anprc148jem.hpp"
 #include "anprc152\ui\anprc152.hpp"

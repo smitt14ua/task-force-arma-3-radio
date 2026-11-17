@@ -55,7 +55,7 @@ class Extended_GetOutMan_EventHandlers {
     };
 };
 
-class Extended_InitPost_Eventhandlers {
+class Extended_InitPost_EventHandlers {
     class Car {
         class TFAR_ExternalIntercom_Interactions {
             LAND_INTERACTIONS;

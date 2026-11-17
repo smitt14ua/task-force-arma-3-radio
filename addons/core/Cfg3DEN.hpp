@@ -1,23 +1,3 @@
-/*
-class ctrlMenuStrip;
-class display3DEN {
-    class Controls {
-        class MenuStrip: ctrlMenuStrip {
-            class Items {
-                class Attributes {
-                    items[] += {"TFAR_Preferences"};
-                };
-                class TFAR_Preferences {
-                    text = ECSTRING(core,3DEN_Menu);
-                    action = "edit3DENMissionAttributes 'TFAR_Preferences';";
-                    picture = QPATHTOF(task_force_arrowhead_logo.paa);
-                };
-            };
-        };
-    };
-};
-*/
-
 #define SWCode  if (_value isEqualTo '' || _value isEqualTo []) exitWith {};\
                 if (_value isEqualType '') then {\
                     _value = [ARR_5(_value,TFAR_MAX_CHANNELS,TFAR_MAX_SW_FREQ,TFAR_MIN_SW_FREQ,TFAR_FREQ_ROUND_POWER)] call DFUNC(parseFrequenciesInput);\
@@ -36,16 +16,6 @@ class display3DEN {
                 }
 
 class Cfg3DEN {
-    /*
-    class Mission {
-        class TFAR_Preferences {
-            displayName = ECSTRING(core,3DEN_Menu);
-            class AttributeCategories {
-                
-            };
-        };
-    };
-    */
     class Object {
         class AttributeCategories {
             class TFAR_attributes {
@@ -90,7 +60,7 @@ class Cfg3DEN {
                         control = "EditShort";
                         displayName = "Default Intercom Channel";
                         tooltip = "Default Intercom Channel when entering vehicle. Overwrites global setting. (-1 means Intercom disabled by default, -2 means this setting is ignored)";
-                        expression = QUOTE(diag_log [ARR_2('defaultIntercomSlot', _value)]; if (_value != -2) then {_this setVariable [ARR_3('TFAR_defaultIntercomSlot',_value,true)]};);
+                        expression = QUOTE(if (_value != -2) then {_this setVariable [ARR_3('TFAR_defaultIntercomSlot',_value,true)]};);
                         typeName = "NUMBER";
                         validate = "number";
                         condition = "objectVehicle";

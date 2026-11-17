@@ -21,7 +21,7 @@
 */
 
 private _radio = _this;
-if !(_radio isEqualType [] || {_radio isEqualType ""}) exitWith {sideUnknown};
+if !(_radio isEqualTypeAny [[], ""]) exitWith {sideUnknown};
 
 private _isLrRadio = _radio isEqualType [];
 private _settings = _radio call ([TFAR_fnc_getSwSettings, TFAR_fnc_getLrSettings] select _isLrRadio);
