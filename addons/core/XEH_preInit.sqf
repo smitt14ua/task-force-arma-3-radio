@@ -2,6 +2,10 @@
 
 #include "XEH_PREP.inc.sqf"
 
+//Needed on all machines (static radios on the server raise it, setVolume broadcasts it). Don't overwrite a value
+//a JIP client may already have received from the server.
+if (isNil "TF_speakerDistance") then {TF_speakerDistance = 20};
+
 if (isServer && {isMultiplayer || is3DENMultiplayer}) then {
     [] call DFUNC(serverInit);
 };
@@ -101,7 +105,6 @@ if (hasInterface) then {//Clientside Variables
     TF_tangent_sw_additional = false;
     TF_tangent_lr_additional = false;
 
-    TF_speakerDistance = 20;
     TF_speak_volume_level = "normal";
     TF_speak_volume_meters = TFAR_VOLUME_NORMAL;
     TF_min_voice_volume = TFAR_VOLUME_WHISPERING;
