@@ -85,7 +85,8 @@ namespace SharedMemoryHandlerInternal {
             const auto dwWaitResult = WaitForSingleObject(
                 hMutex,    // handle to mutex
                 INFINITE);  // no time-out interval
-            if (dwWaitResult == WAIT_OBJECT_0) {
+            //WAIT_ABANDONED (the game died while holding it) still transfers ownership to us, it has to be released normally
+            if (dwWaitResult == WAIT_OBJECT_0 || dwWaitResult == WAIT_ABANDONED) {
                 m_isLocked = true;
                 return;
             }
@@ -125,5 +126,8 @@ private:
     HANDLE hMutex = nullptr;
     HANDLE pMapView = nullptr;
     bool wasConnected = false;
+    //Latest point in time at which the extension can have started waiting for the answer of the pending sync request
+    std::chrono::system_clock::time_point syncRequestTime{};
+    bool syncRequestPending = false;
 };
 

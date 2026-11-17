@@ -207,7 +207,9 @@ void helpers::shortFloatMultEx(short * data, size_t elementCount, __m128 multPac
 }
 
 inline float helpers::parseArmaNumber(std::string_view armaNumber) {
-    return static_cast<float>(std::strtof(armaNumber.data(),nullptr));
+    //The view is not null-terminated, copy it (short numbers fit the small string buffer, no allocation)
+    const std::string number(armaNumber);
+    return std::strtof(number.c_str(), nullptr);
 }
 
 inline int helpers::parseArmaNumberToInt(std::string_view armaNumber) {
@@ -306,12 +308,14 @@ float helpers::volumeMultiplifier(const float volumeValue) {
 
 std::map<std::string, FREQ_SETTINGS, std::less<>> helpers::parseFrequencies(std::string_view string) {
     std::map<std::string, FREQ_SETTINGS, std::less<>> result;
+    if (string.length() < 2) return result; //substr(1) throws on an empty string
     auto sub = string.substr(1, string.length() - 2);
     if (sub.empty()) return result;
     std::vector<std::string_view> v;
     v.reserve(4);
     split(sub, ',', v);
     for (std::string_view xs : v) {
+        if (xs.length() < 2) continue;
         auto parts = split(xs.substr(1, xs.length() - 2), '|');
         if (parts.size() == 3 || parts.size() == 4) {
             FREQ_SETTINGS settings;

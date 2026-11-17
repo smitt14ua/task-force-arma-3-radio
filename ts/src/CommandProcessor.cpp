@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <filesystem>
 #include <string_view>
+#include <set>
 
 using namespace std::literals::string_view_literals;
 
@@ -68,6 +69,28 @@ void CommandProcessor::queueCommand(const std::string& command) {
 
 
 
+//Minimum number of tab separated tokens (including the command name) a game command needs before its tokens are indexed
+static size_t minimumTokenCount(gameCommand command) {
+    switch (command) {
+        case gameCommand::POS: return 14;
+        case gameCommand::FREQ: return 11;
+        case gameCommand::TANGENT: return 5;
+        case gameCommand::TRACK: return 4;
+        case gameCommand::SETCFG: return 3;
+        case gameCommand::TS_INFO:
+        case gameCommand::IS_SPEAKING:
+        case gameCommand::KILLED:
+        case gameCommand::RELEASE_ALL_TANGENTS:
+        case gameCommand::AddRadioTower:
+        case gameCommand::DeleteRadioTower: return 2;
+        default: return 1; //SPEAKERS validates its tokens itself
+    }
+}
+
+static void logMalformedCommand(const std::string& command) {
+    Logger::log(LoggerTypes::teamspeakClientlog, "Ignoring malformed game command: " + command, LogLevel_WARNING);
+}
+
 DEFINE_API_PROFILER(processCommand)
 std::string CommandProcessor::processCommand(const std::string& command) {
     Logger::log(LoggerTypes::gameCommands, command);
@@ -78,6 +101,11 @@ std::string CommandProcessor::processCommand(const std::string& command) {
     helpers::split(command, '\t', tokens, 2); //may not be used in nickname
     const auto gameCommand = toGameCommand(tokens[0], tokens.size());
     if (gameCommand == gameCommand::unknown) return "UNKNOWN COMMAND";
+    //Only up to 2 tokens are split here, the full POS check happens in the async processing
+    if (tokens.size() < std::min<size_t>(minimumTokenCount(gameCommand), 2)) {
+        logMalformedCommand(command);
+        return "UNKNOWN COMMAND";
+    }
 
 
     switch (gameCommand) {
@@ -214,7 +242,14 @@ void CommandProcessor::threadRun() {
         const auto command(std::move(commandQueue.front()));
         commandQueue.pop();
         lock.unlock();
-        processAsynchronousCommand(command);
+        //An exception escaping this thread would terminate TeamSpeak
+        try {
+            processAsynchronousCommand(command);
+        } catch (const std::exception& ex) {
+            Logger::log(LoggerTypes::teamspeakClientlog, std::string("Game command failed: ") + ex.what() + " (" + command + ")", LogLevel_ERROR);
+        } catch (...) {
+            Logger::log(LoggerTypes::teamspeakClientlog, "Game command failed: unknown exception (" + command + ")", LogLevel_ERROR);
+        }
     }
     threadRunning = false;
 }
@@ -231,6 +266,10 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) co
     helpers::split(command, '\t', tokens); //may not be used in nickname
     const auto gameCommand = toGameCommand(tokens[0], tokens.size());
     if (gameCommand == gameCommand::unknown) return;
+    if (tokens.size() < minimumTokenCount(gameCommand)) {
+        logMalformedCommand(command);
+        return;
+    }
     TSServerID currentServerConnectionHandlerID = Teamspeak::getCurrentServerConnection();
     auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(currentServerConnectionHandlerID);
     if (!clientDataDir) return;
@@ -396,7 +435,16 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) co
                 msg += key;
                 msg += " (You probably need to update your TFAR Teamspeak plugin)"sv;
 
-                MessageBoxA(0, msg.c_str(), "Task Force Radio", MB_OK);
+                Logger::log(LoggerTypes::teamspeakClientlog, msg, LogLevel_WARNING);
+                //Show it from its own thread so game messages keep being processed while the box is open, once per text.
+                //The texts are never erased, so the thread only reads a stable pointer and touches nothing after the box returns.
+                static std::mutex shownMutex;
+                static std::set<std::string, std::less<>> shownMessages;
+                std::lock_guard<std::mutex> shownLock(shownMutex);
+                if (const auto [it, inserted] = shownMessages.insert(std::move(msg)); inserted) {
+                    const char* text = it->c_str();
+                    std::thread([text]() { MessageBoxA(0, text, "Task Force Radio", MB_OK); }).detach();
+                }
                 return;
             }
             if (tokens.size() == 4) {

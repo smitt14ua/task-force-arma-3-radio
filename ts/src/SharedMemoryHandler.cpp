@@ -22,7 +22,10 @@ bool SharedMemoryData::getAsyncRequestMultiple(std::vector<std::string>& reqs) {
     if (nextFreeAsyncMessage == 0)
         return false;
 
-    for (int position = 0; position < nextFreeAsyncMessage; ++position) { //Grab all messages in order
+    //Never trust the shared counter blindly. The extension's full check (next > COUNT) lets it write one slot past the
+    //array, which still lies inside the page-rounded mapping, so read that one too instead of dropping the message.
+    const int messageCount = std::min<int>(nextFreeAsyncMessage, SHAREDMEM_ASYNCMSG_COUNT + 1);
+    for (int position = 0; position < messageCount; ++position) { //Grab all messages in order
         reqs.emplace_back();
         auto& req = reqs.back();
 
@@ -45,12 +48,13 @@ bool SharedMemoryHandlerInternal::SharedMemoryData::getSyncRequest(std::string& 
 void SharedMemoryHandlerInternal::SharedMemoryData::setSyncResponse(const std::string& response) {
     ProfileFunction;
     setLastPluginTick();
+    const auto syncResp = reinterpret_cast<SharedMemString*>(reinterpret_cast<char*>(this) + 128 + sizeof(SharedMemString));
     if (response.length() > SHAREDMEM_MAX_STRINGSIZE) {
-        MessageBoxA(0, "TFAR Plugin Too big Sresponse", response.c_str(), 0);
-        __debugbreak();//Response bigger than max allowed size
+        //Response bigger than the slot. Truncate instead of leaving the game without an answer
+        Logger::log(LoggerTypes::teamspeakClientlog, "SHAMEM sync response too big (" + std::to_string(response.length()) + " bytes), truncated", LogLevel_ERROR);
+        *syncResp = response.substr(0, SHAREDMEM_MAX_STRINGSIZE);
         return;
     }
-    const auto syncResp = reinterpret_cast<SharedMemString*>(reinterpret_cast<char*>(this) + 128 + sizeof(SharedMemString));
     *syncResp = response;
 }
 
@@ -119,7 +123,8 @@ SharedMemoryHandler::SharedMemoryHandler() {
         diag << TS_INDENT << "pMapView: " << pMapView << "\n";
         diag << TS_INDENT << "wasConnected: " << wasConnected << "\n";
         diag << TS_INDENT << "isReady: " << isReady() << "\n";
-        
+        if (!pMapView) return;
+
         MutexLock lock(hMutex);
         SharedMemoryData* pData = static_cast<SharedMemoryData*>(pMapView);
 
@@ -139,6 +144,7 @@ SharedMemoryHandler::~SharedMemoryHandler() {
     }
     if (hMapFile) CloseHandle(hMapFile);
     if (hEventRequest) CloseHandle(hEventRequest);
+    if (hEventResponse) CloseHandle(hEventResponse);
     if (hMutex) CloseHandle(hMutex);
 }
 
@@ -181,8 +187,23 @@ bool SharedMemoryHandler::hasRequests() {
     return pData->hasAsyncRequest() || pData->hasSyncRequest();
 }
 
+//The extension waits PIPE_TIMEOUT (1000 ms, extensions/task_force_radio_pipe/stdafx.h) for a sync answer and then gives up
+//without clearing the answer event. An answer written after that would be read as the answer of the NEXT sync call,
+//shifting all following replies. Only drop answers that are certainly too late (margin for timer resolution).
+static constexpr auto extensionSyncTimeout = 1000ms;
+static constexpr auto staleAnswerMargin = 50ms;
+
 bool SharedMemoryHandler::answerSyncRequest(const std::string& answer) {
     if (!isReady()) return false;
+    if (syncRequestPending) {
+        syncRequestPending = false;
+        const auto age = std::chrono::system_clock::now() - syncRequestTime;
+        if (age > extensionSyncTimeout + staleAnswerMargin) {
+            Logger::log(LoggerTypes::teamspeakClientlog, "SHAMEM dropped sync answer, the game stopped waiting "
+                + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(age).count()) + "ms after the request", LogLevel_WARNING);
+            return false;
+        }
+    }
     MutexLock lock(hMutex);
     auto pData = static_cast<SharedMemoryData*>(pMapView);
     pData->setSyncResponse(answer);
@@ -207,7 +228,15 @@ bool SharedMemoryHandler::getSyncRequest(std::string& request) {
     if (!isReady()) return false;
     MutexLock lock(hMutex);
     auto pData = static_cast<SharedMemoryData*>(pMapView);
-    return pData->getSyncRequest(request);
+    //The extension sets lastGameTick right before writing the request and starts waiting after that, later calls only
+    //move it forward. So min(now, lastGameTick) is never earlier than the start of the extension's wait.
+    const auto lastGameTick = pData->getLastGameTick();
+    if (!pData->getSyncRequest(request))
+        return false;
+    const auto now = std::chrono::system_clock::now();
+    syncRequestTime = (lastGameTick.time_since_epoch().count() != 0 && lastGameTick < now) ? lastGameTick : now;
+    syncRequestPending = true;
+    return true;
 }
 
 bool SharedMemoryHandler::getAsyncRequest(std::string& request) {
@@ -227,6 +256,7 @@ bool SharedMemoryHandler::getAsyncRequestMultiple(std::vector<std::string>& requ
 bool SharedMemoryHandler::isConnected() {
     ProfileFunction;
     const auto timeout = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float>(TFAR::config.get<float>(Setting::pluginTimeout)));
+    if (!isReady()) return false; //no shared memory, nothing to read. Retried on the next call
     MutexLock lock(hMutex);
     auto pData = static_cast<SharedMemoryData*>(pMapView);
     pData->setLastPluginTick();
@@ -247,6 +277,7 @@ bool SharedMemoryHandler::isConnected() {
 }
 
 void SharedMemoryHandler::setConfigNeedsRefresh(bool param1) const {
+    if (!pMapView) return;
     auto pData = static_cast<SharedMemoryData*>(pMapView);
     pData->setConfigNeedsRefresh(param1);
 }
@@ -287,8 +318,10 @@ bool SharedMemoryHandler::createMemMap() {
         if (!createMemRegion())
             return false;
     }
-    if (pMapView)
-        CloseHandle(pMapView);
+    if (pMapView) {//a view is not a handle
+        UnmapViewOfFile(pMapView);
+        pMapView = nullptr;
+    }
 
     pMapView = MapViewOfFile(hMapFile,   // handle to map object
         FILE_MAP_ALL_ACCESS, // read/write permission
@@ -298,6 +331,7 @@ bool SharedMemoryHandler::createMemMap() {
     if (!pMapView) {
         Logger::log(LoggerTypes::teamspeakClientlog, "SHAMEM MapViewOfFile " + GetLastErrorString(), LogLevel_ERROR);
         CloseHandle(hMapFile);
+        hMapFile = nullptr; //else the next attempt would reuse the closed handle
         return false;
     }
 

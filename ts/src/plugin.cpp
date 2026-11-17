@@ -13,6 +13,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <charconv>
 #include "public_rare_definitions.h"
 #include "ts3_functions.h"
 #include "plugin.h"
@@ -202,21 +203,48 @@ void PipeThread() {
         pipeHandler.setConfigNeedsRefresh(TFAR::config.needsRefresh());//#TODO Signal/Slot ?
     #endif
 
-        commands.resize(1);
-        // pipeHandler.getDataMultiple
-        if (!pipeHandler.getData(commands[0], 20ms))//This will still wait. 1ms if SHAMEM error. 20ms if game unconnected
+#ifdef USE_SHAREDMEM
+        //Returns either the single pending sync request or all queued async messages in FIFO order.
+        //The extension only signals the event for sync requests, async ones are picked up by polling, hence the short timeout.
+        if (!pipeHandler.getDataMultiple(commands, 5ms))//This will still wait. 1ms if SHAMEM error. 5ms if no request
             continue;
+#else
+        commands.resize(1);
+        if (!pipeHandler.getData(commands[0], 5ms))
+            continue;
+#endif
 
         for (auto& command : commands) {
 
             ProfileScopeN("got command");
             //speedTest gameCommandIn("gameCommandInPipe", false);
 
+            if (command.empty())
+                continue;
+
+#ifdef USE_SHAREDMEM
+            const bool isAsync = command.back() == '~';//a ~ at the end identifies an Async call
+            //An exception must neither kill this thread nor TeamSpeak. A sync request must still be answered exactly once.
+            bool answered = false;
+            try {
+                if (isAsync) {
+                    command.pop_back();//removes ~ from end
+                    TFAR::getCommandProcessor()->queueCommand(command);
+                } else {
+                    const auto commandResult = TFAR::getCommandProcessor()->processCommand(command);
+                    answered = true;
+                    pipeHandler.sendData(commandResult);
+                }
+            } catch (const std::exception& ex) {
+                Logger::log(LoggerTypes::teamspeakClientlog, std::string("Game command failed: ") + ex.what() + " (" + command + ")", LogLevel_ERROR);
+                if (!isAsync && !answered) pipeHandler.sendData("FAIL", 4);
+            } catch (...) {
+                Logger::log(LoggerTypes::teamspeakClientlog, "Game command failed: unknown exception (" + command + ")", LogLevel_ERROR);
+                if (!isAsync && !answered) pipeHandler.sendData("FAIL", 4);
+            }
+#else
             if (command.back() == '~') {//a ~ at the end identifies an Async call
                 command.pop_back();//removes ~ from end
-#ifdef USE_SHAREDMEM
-                TFAR::getCommandProcessor()->queueCommand(command);
-#else
                 bool dataReturned = false;
                 if (pipeHandler.sendData("OK", 2)) {
                     log_string("Info to ARMA send async", LogLevel_DEBUG);
@@ -224,20 +252,7 @@ void PipeThread() {
                 } else {
                     log_string("Can't send info to ARMA async", LogLevel_ERROR);
                 }
-#endif
             } else {
-                //gameCommandIn.reset();
-#ifdef USE_SHAREDMEM
-                const auto commandResult = TFAR::getCommandProcessor()->processCommand(command);
-                pipeHandler.sendData(commandResult);
-                //if (gameCommandIn.getCurrentElapsedTime().count() >
-                //#ifdef _DEBUG
-                //    400)
-                //#else
-                //    200)
-                //#endif
-                //    log_string("gameinteraction " + std::to_string(gameCommandIn.getCurrentElapsedTime().count()) + command, LogLevel_INFO);   //#Release remove logging and creation variable
-#else
                 if (gameCommandIn.getCurrentElapsedTime().count() > 200)
                     log_string("gameinteraction " + std::to_string(gameCommandIn.getCurrentElapsedTime().count()) + command, LogLevel_INFO);   //#Release remove logging and creation variable
 
@@ -248,9 +263,8 @@ void PipeThread() {
                         log_string("Can't send info to ARMA", LogLevel_ERROR);
                     }
                 }
-#endif
-
             }
+#endif
 
         }
     }
@@ -1056,7 +1070,12 @@ void processPluginCommand(std::string_view command) {
     } else if (tokens.size() == 2 && tokens[0] == "REQVOL"sv) {//#TODO request volume onGameStart for each client not currently known
         if (!clientDataDir->myClientData)
             return;
-        const TSClientID clientID = std::stoi(std::string(tokens[1].data(), tokens[1].length()));
+        int parsedID = 0;
+        const auto idText = tokens[1];
+        if (const auto [ptr, ec] = std::from_chars(idText.data(), idText.data() + idText.length(), parsedID);
+            ec != std::errc() || parsedID < 0 || parsedID > 0xFFFF)
+            return; //malformed command from another client, ignore it
+        const TSClientID clientID = parsedID;
         const auto myNickname = clientDataDir->myClientData->getNickname();
         const bool curTalking = clientDataDir->myClientData->clientTalkingNow;
         const auto cmd = "VOLUME\t" + myNickname + "\t" + std::to_string(TFAR::getInstance().m_gameData.myVoiceVolume) + "\t" + (curTalking ? "true" : "false");
@@ -1073,16 +1092,24 @@ void ts3plugin_onPluginCommandEventNew(uint64 serverConnectionHandlerID, const c
 
 void ts3plugin_onPluginCommandEventOld(uint64 serverConnectionHandlerID, const char* pluginName, const char* pluginCommand) {
     ProfileFunction;
-    Logger::log(LoggerTypes::pluginCommands, std::string(pluginName) + ":" + std::string(pluginCommand));
-    log_string(std::string("ON PLUGIN COMMAND ") + pluginName + " " + pluginCommand, LogLevel_DEVEL);
-    if (Teamspeak::getCurrentServerConnection() == serverConnectionHandlerID) {
-        if (strncmp(pluginName, "TFAR", "TFAR"sv.length()) == 0) {
-            processPluginCommand(std::string_view(pluginCommand));
+    if (!pluginName || !pluginCommand) return;
+    //Commands come from other clients, an exception escaping into TeamSpeak would crash it
+    try {
+        Logger::log(LoggerTypes::pluginCommands, std::string(pluginName) + ":" + std::string(pluginCommand));
+        log_string(std::string("ON PLUGIN COMMAND ") + pluginName + " " + pluginCommand, LogLevel_DEVEL);
+        if (Teamspeak::getCurrentServerConnection() == serverConnectionHandlerID) {
+            if (strncmp(pluginName, "TFAR", "TFAR"sv.length()) == 0) {
+                processPluginCommand(std::string_view(pluginCommand));
+            } else {
+                Logger::log(LoggerTypes::teamspeakClientlog, "Plugin command event failure", LogLevel_ERROR);
+            }
         } else {
-            Logger::log(LoggerTypes::teamspeakClientlog, "Plugin command event failure", LogLevel_ERROR);
+            Logger::log(LoggerTypes::teamspeakClientlog, "Plugin command unknown ID", LogLevel_ERROR);
         }
-    } else {
-        Logger::log(LoggerTypes::teamspeakClientlog, "Plugin command unknown ID", LogLevel_ERROR);
+    } catch (const std::exception& ex) {
+        Logger::log(LoggerTypes::teamspeakClientlog, std::string("Plugin command failed: ") + ex.what(), LogLevel_ERROR);
+    } catch (...) {
+        Logger::log(LoggerTypes::teamspeakClientlog, "Plugin command failed: unknown exception", LogLevel_ERROR);
     }
 }
 

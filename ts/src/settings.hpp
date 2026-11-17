@@ -6,6 +6,8 @@
 #include "Locks.hpp"
 #include "SignalSlot.hpp"
 #include <sstream>
+#include <cstdlib>
+#include <cstring>
 
 //Was originally using enum.hpp. But it had to be edited to allow more than 8 settings.. at that was too tedious
 #define Settings(XX) \
@@ -93,11 +95,27 @@ public:
         }
         return *this;
     }
-    void setString(const std::string& value) const {
-        stringValue->assign(value);
+    //Converts the text to the stored type. Never reinterpret the union: a mission may send a wrongly typed value.
+    void setString(const std::string& value) {
+        switch (type) {
+            case settingType::t_string: stringValue->assign(value); break;
+            case settingType::t_bool:
+                if (_stricmp(value.c_str(), "true") == 0 || value == "1")
+                    boolValue = true;
+                else if (_stricmp(value.c_str(), "false") == 0 || value == "0")
+                    boolValue = false;
+                break; //anything else keeps the current value
+            case settingType::t_float: {
+                char* end = nullptr;
+                const float parsed = std::strtof(value.c_str(), &end);
+                if (end != value.c_str())//keep the current value if it isn't a number
+                    floatValue = parsed;
+            } break;
+            default: break;
+        }
     }
-    void setString(const char* value) const {
-        stringValue->assign(value);
+    void setString(const char* value) {
+        setString(std::string(value ? value : ""));
     }
     ~settingValue() {
         if (type == settingType::t_string)
