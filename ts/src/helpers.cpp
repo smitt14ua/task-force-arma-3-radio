@@ -23,6 +23,9 @@ void helpers::applyILD(SampleBuffer& samples, Direction3D direction, AngleRadian
 }
 #define _SPEAKER_POSITIONS_
 #include <mutex>
+#include <atomic>
+#include <thread>
+#include <chrono>
 #include <X3daudio.h>
 #pragma comment(lib, "x3daudio.lib")
 X3DAUDIO_HANDLE x3d_handle;
@@ -377,6 +380,9 @@ namespace {
         HMODULE module;
     };
 
+    //Detached threads still running, see helpers::waitForDetachedThreads
+    std::atomic<int> detachedThreadsRunning = 0;
+
     DWORD WINAPI detachedThreadProc(LPVOID parameter) {
         HMODULE module;
         {
@@ -386,9 +392,20 @@ namespace {
                 task->function();
             } catch (...) {}
         } //Everything of ours is destroyed before the module reference is dropped
+        --detachedThreadsRunning; //Our module reference is still held until FreeLibraryAndExitThread
         //Doesn't return into the (possibly unloaded) module
         FreeLibraryAndExitThread(module, 0);
     }
+}
+
+bool helpers::waitForDetachedThreads(std::chrono::milliseconds timeout) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (detachedThreadsRunning > 0) {
+        if (std::chrono::steady_clock::now() >= deadline)
+            return false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    return true;
 }
 
 void helpers::showMessageBoxDetached(std::string_view text, std::string_view caption, unsigned int style) {
@@ -425,8 +442,10 @@ void helpers::runDetached(std::function<void()> function) {
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCWSTR>(&detachedThreadProc), &module))
         return;
     auto task = std::make_unique<DetachedTask>(DetachedTask{ std::move(function), module });
+    ++detachedThreadsRunning;
     const HANDLE thread = CreateThread(nullptr, 0, &detachedThreadProc, task.get(), 0, nullptr);
     if (!thread) {
+        --detachedThreadsRunning;
         FreeLibrary(module);
         return;
     }

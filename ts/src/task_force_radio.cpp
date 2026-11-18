@@ -15,6 +15,16 @@
 
 extern struct TS3Functions ts3Functions;
 
+//These requests run on detached threads that keep the plugin DLL loaded (and the plugin shutdown waits for them):
+//don't let an unreachable host hold them for WinInet's default timeouts of a minute or more
+static void setShortInternetTimeouts(HINTERNET handle) {
+    if (!handle) return;
+    DWORD timeout = 5000;
+    InternetSetOption(handle, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
+    InternetSetOption(handle, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(timeout));
+    InternetSetOption(handle, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
+}
+
 
 TFAR::TFAR() {
     onGameDisconnected.connect([this]() {
@@ -192,6 +202,7 @@ bool TFAR::isUpdateAvailable() {
     if (r & INTERNET_CONNECTION_OFFLINE) return false;
 
     const HINTERNET Initialize = InternetOpen(L"TFAR", INTERNET_OPEN_TYPE_PRECONFIG, nullptr, nullptr, 0);
+    setShortInternetTimeouts(Initialize);
     const HINTERNET Connection = InternetConnect(Initialize, UPDATE_URL, INTERNET_DEFAULT_HTTP_PORT, nullptr, nullptr, INTERNET_SERVICE_HTTP, 0, 0);
     const HINTERNET File = HttpOpenRequest(Connection, nullptr, UPDATE_FILE, nullptr, nullptr, nullptr, 0, 0);
 
@@ -349,6 +360,7 @@ void TFAR::trackPiwik(const std::vector<std::string_view>& piwikDataIn) {
         if (r & INTERNET_CONNECTION_OFFLINE) return;
 
         HINTERNET Initialize = InternetOpen(L"TFAR", INTERNET_OPEN_TYPE_PRECONFIG, nullptr, nullptr, 0);
+        setShortInternetTimeouts(Initialize);
         HINTERNET Connection;
         if (piwikData[1] == "beta")
             Connection = InternetConnect(Initialize, L"piwik.dedmen.de", INTERNET_DEFAULT_HTTP_PORT, nullptr, nullptr, INTERNET_SERVICE_HTTP, 0, 0);

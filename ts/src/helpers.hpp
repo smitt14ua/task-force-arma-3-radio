@@ -8,6 +8,7 @@
 #include "profilers.hpp"
 #include <array>
 #include <functional>
+#include <chrono>
 #include <emmintrin.h>
 #include <iterator>
 #include <memory>
@@ -114,6 +115,9 @@ public:
     //Runs function on a detached thread that keeps the plugin DLL loaded until it is done
     //(TeamSpeak may unload the plugin while e.g. a MessageBox is still open). Exceptions are swallowed.
     static void runDetached(std::function<void()> function);
+    //Waits until all runDetached threads ended. A thread still running at plugin shutdown keeps the DLL loaded, and a
+    //re-enabled plugin would then reuse the old instance whose signal slots onShutdown removed.
+    static bool waitForDetachedThreads(std::chrono::milliseconds timeout);
     //Shows a MessageBox without blocking the caller. The thread starts directly in user32 and never runs plugin code,
     //so it neither keeps the DLL loaded nor crashes when TeamSpeak unloads the plugin while the box is open.
     static void showMessageBoxDetached(std::string_view text, std::string_view caption, unsigned int style);

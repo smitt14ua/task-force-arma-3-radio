@@ -258,7 +258,7 @@ void CommandProcessor::threadRun() {
         else
             threadWorkCondition.wait(lock, hasWork);
         if (!shouldRun) break;
-        if (!taskQueue.empty()) { //Internal work first, it was requested after the queued commands' effects
+        if (!taskQueue.empty() && commandQueue.empty()) { //Internal work after the commands queued before it
             auto task = std::move(taskQueue.front());
             taskQueue.pop();
             lock.unlock();
@@ -278,9 +278,12 @@ void CommandProcessor::threadRun() {
         sendDueTangentRelease(); //A release that is already due goes out before the next command
         runGuarded(command, [this, &command]() { processAsynchronousCommand(command); });
     }
-    //Shutting down while a release is pending: release now (TeamSpeak is still loaded), so nobody keeps hearing us
+    //Shutting down while transmitting or a release is pending: release now (TeamSpeak is still loaded and our game
+    //name still set, onGameEnd runs after this), so nobody keeps hearing us
     if (pendingTangentRelease)
         runGuarded("delayed tangent release", [this]() { sendPendingTangentRelease(true); });
+    else if (TFAR::getInstance().m_gameData.tangentPressed)
+        runGuarded("tangent release on shutdown", [this]() { releaseCurrentTransmission(Teamspeak::getCurrentServerConnection()); });
     threadRunning = false;
 }
 
@@ -408,6 +411,9 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) {
         } return;
         case gameCommand::MISSIONEND: //Handled by pipe extension. That sets last GameTick to 0 so SharedMemoryHandler::onDisconnected will fire
             //TFAR::getInstance().onGameDisconnected();
+            //Towers belong to the mission. This always arrives (in order, before the next mission's towers), while the
+            //zeroed GameTick can be overwritten by the game's next call before the plugin sees it.
+            TFAR::getAntennaManager()->clearAntennas();
             return;
         case gameCommand::AddRadioTower: {
             auto data = helpers::split(tokens[1], 0xA);

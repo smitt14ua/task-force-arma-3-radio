@@ -40,7 +40,8 @@ public:
     std::string processCommand(const std::string& command);
 
     static gameCommand toGameCommand(std::string_view textCommand, size_t tokenCount);
-    //Game ended (mission end, game crash/timeout, shutdown) while we may be transmitting: send the RELEASED and reset
+    //Game ended (mission end, game crash/timeout) while we may be transmitting: send the RELEASED and reset
+    //(on plugin shutdown the command thread does that itself when it stops)
     //the local tangent state on the command thread. Waits (shortly) until done, so it happens before the nickname
     //is restored and other clients can still find us. Must not be called from the command thread.
     void releaseTransmissionOnGameEnd();

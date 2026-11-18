@@ -414,6 +414,10 @@ void ts3plugin_shutdown() {
         threadService.join();
     TFAR::getCommandProcessor()->stopThread();
     TFAR::getInstance().onShutdown();//Call shutdown Signal
+    //A still running update check/tracking request would keep this DLL loaded, and re-enabling the plugin would then
+    //reuse this instance with the signal slots onShutdown just removed. They give up after a few seconds.
+    if (!helpers::waitForDetachedThreads(std::chrono::seconds(12)))
+        Logger::log(LoggerTypes::teamspeakClientlog, "shutdown: background request still running, re-enabling TFAR needs a TeamSpeak restart", LogLevel_WARNING);
 
     TFAR::getInstance().m_gameData.alive = false;
     pipeConnected = false;
