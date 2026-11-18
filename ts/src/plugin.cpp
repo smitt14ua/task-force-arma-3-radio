@@ -455,9 +455,9 @@ bool isPluginEnabledForUser(TSServerID serverConnectionHandlerID, TSClientID cli
         if (clientInfo.empty()) return false;
         std::string shouldStartWith = getConnectionStatusInfo(true, true, false);  //slow
         result = clientData->pluginEnabled = helpers::startsWith(shouldStartWith, clientInfo);
+        //Only when actually re-checked: refreshing on cache hits kept the check from ever running while he talks
+        clientData->pluginEnabledCheck = currentTime;
     }
-
-    clientData->pluginEnabledCheck = currentTime;
 
     return result;
 }
@@ -479,7 +479,6 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
     _mm_setcsr((_mm_getcsr() & ~0x0040) | (0x0040));//_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
     static std::chrono::steady_clock::time_point last_no_info;
     const auto myId = Teamspeak::getMyId(serverConnectionHandlerID);
-    auto myNickname = Teamspeak::getMyNickname(serverConnectionHandlerID);
 
     const auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(serverConnectionHandlerID);
     if (!clientDataDir) return;//Unknown server
@@ -548,7 +547,17 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
 
     if (!clientData || !myData) return;
     sampleBuffer.applyGain(clientData->voiceVolumeMultiplifier);
-    auto originalBuffer = sampleBuffer.copy();
+
+    //Radios first: without one the unprocessed copy and the radio compression are not needed
+    const std::vector<LISTED_INFO> listed_info = isSpectator ? std::vector<LISTED_INFO>{} : clientData->isOverRadio(myData, false, false);
+    const bool hasRadioOutput = std::any_of(listed_info.begin(), listed_info.end(), [isFromMicrophone](const LISTED_INFO& info) {
+        return !(isFromMicrophone && info.on == receivingRadioType::LISTED_ON_INTERCOM);
+    });
+    //Per audio thread scratch buffers (reused, no allocation per buffer)
+    static thread_local SampleBuffer originalBuffer;
+    static thread_local SampleBuffer radio_buffer;
+    if (hasRadioOutput)
+        sampleBuffer.copy(originalBuffer);
 
     const bool shouldPlayerHear = clientData->canSpeak && canSpeak;
 
@@ -575,13 +584,19 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
                 //    LOG3DMUTE("TFAR SemiMute atten s1 <0.15");
                 //helpers::applyGain(samples, sampleCount, channels, atten);
                 if (!isInSameVehicle && clientData->objectInterception > 0) {
-                    auto filter = clientData->effects.getFilterObjectInterception(clientData->objectInterception);
-                    if (clientData->OISampleBuffer.getSampleCount() != 0) {
+                    bool created = false;
+                    auto filter = clientData->effects.getFilterObjectInterception(clientData->objectInterception, &created);
+                    //Pre-seed only a filter without history (new, or not the one used for the last buffer).
+                    //Re-filtering the last buffer on every call ran it through the same filter twice.
+                    const bool needsSeed = created || filter.get() != clientData->OIFilterInUse;
+                    clientData->OIFilterInUse = filter.get();
+                    if (needsSeed && clientData->OISampleBuffer.getSampleCount() != 0) {
                         helpers::processFilterStereo(clientData->OISampleBuffer, 1.0f, filter, false); //pre-seed the filter with last sample
                     }
                     sampleBuffer.copy(clientData->OISampleBuffer);
                     helpers::processFilterStereo(sampleBuffer, 1.0f, filter); //getFilterObjectInterception
                 } else {
+                    clientData->OIFilterInUse = nullptr;
                     sampleBuffer.copy(clientData->OISampleBuffer);
                 }
             } else {
@@ -623,21 +638,20 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
     //#### RADIOS AND SPEAKERS
 
     // process radio here
-    processCompressor(&clientData->effects.compressor, originalBuffer);
-
-    std::vector<LISTED_INFO> listed_info = isSpectator ? std::vector<LISTED_INFO>{} : clientData->isOverRadio(myData, false, false);
-    const auto radioDistance = myData->effectiveDistanceTo(clientData);
     if (listed_info.empty() && distanceFromClient > 30) LOG3DMUTE("TFAR NOR");
+    //Without radio output the loop below skips every entry, originalBuffer is not used
+    if (hasRadioOutput) //Own compressor: sharing the direct speech one mixed both streams into one envelope
+        processCompressor(&clientData->effects.radioCompressor, originalBuffer);
+
+    const auto radioDistance = hasRadioOutput ? myData->effectiveDistanceTo(clientData) : 0.f;
     for (auto& info : listed_info) {
         ProfileScopeN("listed info");
         if (isFromMicrophone && info.on == receivingRadioType::LISTED_ON_INTERCOM) continue; //We don't want to hear ourselves over intercom while doing direct speech
-        auto radio_buffer = originalBuffer.copy();
+        originalBuffer.copy(radio_buffer);
         auto volumeLevel = helpers::volumeMultiplifier(static_cast<float>(info.volume));
         if (volumeLevel < 0.2) {
             LOG3DMUTE("VOL Low b=" + std::to_string(info.volume) + " mp =" + std::to_string(volumeLevel) + " efmp =" + std::to_string(volumeLevel* 0.35f));
         }
-
-        std::stringstream processLog;
 
         if (info.on < receivingRadioType::LISTED_ON_NONE) {//don't do for onGround or Intercom
 
@@ -650,36 +664,36 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
 
             switch (PTTDelayArguments::stringToSubtype(clientData->getCurrentTransmittingSubtype())) {
                 case PTTDelayArguments::subtypes::digital: {
-                    processLog << "digital ";
                     if (info.over == sendingRadioType::LISTEN_TO_SW) {
-                        processLog << "sw rd=" << radioDistance << " rn="<< clientData->range;
                         const auto errorLevel = std::min(info.antennaConnection.getLoss(), effectErrorFromDistance(info.over, radioDistance, clientData));
-                        
-                        processLog << " rl=" << errorLevel;
-                        clientData->effects.getSwRadioEffect(info.radio_id)->setErrorLeveL(errorLevel);
+                        const auto effect = clientData->effects.getSwRadioEffect(info.radio_id);
+                        effect->setErrorLeveL(errorLevel);
 
-                        processRadioEffect(radio_buffer, volumeLevel * 0.35f, clientData->effects.getSwRadioEffect(info.radio_id), info.stereoMode);
+                        processRadioEffect(radio_buffer, volumeLevel * 0.35f, effect, info.stereoMode);
                     } else {
-                        processLog << "uw ";
                         const auto underwaterDist = myPosition.distanceUnderwater(clientData->getClientPosition());
                         const auto normalDist = myPosition.distanceTo(clientData->getClientPosition());
-                        clientData->effects.getUnderwaterRadioEffect(info.radio_id)->setErrorLeveL(
+                        const auto effect = clientData->effects.getUnderwaterRadioEffect(info.radio_id);
+                        effect->setErrorLeveL(
                             std::min((underwaterDist * (clientData->range / helpers::distanceForDiverRadio()) + (normalDist - underwaterDist)) / clientData->range
                             , info.antennaConnection.getLoss())
                         );
-                        processRadioEffect(radio_buffer, volumeLevel * 0.35f, clientData->effects.getUnderwaterRadioEffect(info.radio_id), info.stereoMode);
+                        processRadioEffect(radio_buffer, volumeLevel * 0.35f, effect, info.stereoMode);
                     }
                 }
                                                            break;
-                case PTTDelayArguments::subtypes::airborne:
-                    clientData->effects.getAirborneRadioEffect(info.radio_id)->setErrorLeveL(std::min(info.antennaConnection.getLoss(), effectErrorFromDistance(info.over, radioDistance, clientData)));
-                    processRadioEffect(radio_buffer, volumeLevel * 0.35f, clientData->effects.getAirborneRadioEffect(info.radio_id), info.stereoMode);
+                case PTTDelayArguments::subtypes::airborne: {
+                    const auto effect = clientData->effects.getAirborneRadioEffect(info.radio_id);
+                    effect->setErrorLeveL(std::min(info.antennaConnection.getLoss(), effectErrorFromDistance(info.over, radioDistance, clientData)));
+                    processRadioEffect(radio_buffer, volumeLevel * 0.35f, effect, info.stereoMode);
                     break;
-                case PTTDelayArguments::subtypes::digital_lr:
-                    processLog << "lr rd=" << radioDistance << " rn=" << clientData->range;
-                    clientData->effects.getLrRadioEffect(info.radio_id)->setErrorLeveL(std::min(info.antennaConnection.getLoss(), effectErrorFromDistance(info.over, radioDistance, clientData)));
-                    processRadioEffect(radio_buffer, volumeLevel * 0.35f, clientData->effects.getLrRadioEffect(info.radio_id), info.stereoMode);
+                }
+                case PTTDelayArguments::subtypes::digital_lr: {
+                    const auto effect = clientData->effects.getLrRadioEffect(info.radio_id);
+                    effect->setErrorLeveL(std::min(info.antennaConnection.getLoss(), effectErrorFromDistance(info.over, radioDistance, clientData)));
+                    processRadioEffect(radio_buffer, volumeLevel * 0.35f, effect, info.stereoMode);
                     break;
+                }
                 case  PTTDelayArguments::subtypes::phone:
                     helpers::processFilterStereo(radio_buffer, volumeLevel * 10.0f, clientData->effects.getSpeakerPhone(info.radio_id));
                     break;
@@ -717,8 +731,9 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
 
             //Also need distance loss on speakers
             const auto errorLevel = std::min(info.antennaConnection.getLoss(), effectErrorFromDistance(info.over, radioDistance, clientData));
-            clientData->effects.getSwRadioEffect(info.radio_id)->setErrorLeveL(errorLevel);
-            processRadioEffect(radio_buffer, volumeLevel * 0.35f, clientData->effects.getSwRadioEffect(info.radio_id), info.stereoMode);
+            const auto effect = clientData->effects.getSwRadioEffect(info.radio_id);
+            effect->setErrorLeveL(errorLevel);
+            processRadioEffect(radio_buffer, volumeLevel * 0.35f, effect, info.stereoMode);
 
             const auto relativePosition = myPosition.directionTo(info.pos);
             const auto myViewDirection = myData->getViewDirection();
@@ -727,7 +742,8 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
             helpers::applyILD(radio_buffer, relativePosition, myViewDirection);//interaural level difference
 
         } else if (info.on == receivingRadioType::LISTED_ON_INTERCOM) {
-            clientData->effects.getLrRadioEffect("intercom")->setErrorLeveL(0.f);
+            const auto intercomEffect = clientData->effects.getLrRadioEffect("intercom");
+            intercomEffect->setErrorLeveL(0.f);
             auto intercomVolume = TFAR::config.get<float>(Setting::intercomVolume);
             if (TFAR::config.get<bool>(Setting::headsetLowered)) {
                 intercomVolume *= 0.1f;
@@ -741,7 +757,7 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
                 )
                 intercomVolume *= 1.f - TFAR::config.get<float>(Setting::intercomDucking);
 
-            processRadioEffect(radio_buffer, intercomVolume, clientData->effects.getLrRadioEffect("intercom"), stereoMode::stereo);
+            processRadioEffect(radio_buffer, intercomVolume, intercomEffect, stereoMode::stereo);
         }
 
         radio_buffer.mixIntoAdditive(sampleBuffer);//Mix current Radio into samples
@@ -784,21 +800,37 @@ void ts3plugin_onEditPostProcessVoiceDataEvent(uint64 serverConnectionHandlerID,
 
     ProfileFunction;
 
+    if (channels <= 0 || sampleCount <= 0) return;
+
     if (channels != 2) {
-        short* stereo = new short[sampleCount * 2];
-        for (auto q = 0; q < sampleCount; q++) {
-            for (auto g = 0; g < 2; g++)
-                stereo[q * 2 + g] = samples[q * channels + g];
+        //Per audio thread scratch buffer, only grows
+        static thread_local std::vector<short> stereo;
+        if (stereo.size() < static_cast<size_t>(sampleCount) * 2)
+            stereo.resize(static_cast<size_t>(sampleCount) * 2);
+        if (channels == 1) { //Mono output: there is no samples[q + 1], process as dual mono and fold back
+            for (auto q = 0; q < sampleCount; q++) {
+                stereo[q * 2] = samples[q];
+                stereo[q * 2 + 1] = samples[q];
+            }
+        } else {
+            for (auto q = 0; q < sampleCount; q++) {
+                for (auto g = 0; g < 2; g++)
+                    stereo[q * 2 + g] = samples[q * channels + g];
+            }
         }
 
-        processVoiceData(serverConnectionHandlerID, clientID, stereo, sampleCount, 2);
-        for (auto q = 0; q < sampleCount; q++) {
-            for (auto g = 0; g < 2; g++)
-                samples[q * channels + g] = stereo[q * 2 + g];
-            for (auto g = 2; g < channels; g++)
-                samples[q * channels + g] = 0;
+        processVoiceData(serverConnectionHandlerID, clientID, stereo.data(), sampleCount, 2);
+        if (channels == 1) {
+            for (auto q = 0; q < sampleCount; q++)
+                samples[q] = static_cast<short>((stereo[q * 2] + stereo[q * 2 + 1]) / 2);
+        } else {
+            for (auto q = 0; q < sampleCount; q++) {
+                for (auto g = 0; g < 2; g++)
+                    samples[q * channels + g] = stereo[q * 2 + g];
+                for (auto g = 2; g < channels; g++)
+                    samples[q * channels + g] = 0;
+            }
         }
-        delete[] stereo;
     } else {
         processVoiceData(serverConnectionHandlerID, clientID, samples, sampleCount, 2);
     }
@@ -815,9 +847,12 @@ void ts3plugin_onEditCapturedVoiceDataEvent(uint64 serverConnectionHandlerID, sh
     auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(serverConnectionHandlerID);
     if (!clientDataDir || !clientDataDir->myClientData) return;
 
-    //processVoiceData is always modifying data so we need copy.
-    std::vector<short> voice;
-    voice.resize(sampleCount * 2);
+    if (channels <= 0 || sampleCount <= 0) return;
+
+    //processVoiceData is always modifying data so we need copy. Per audio thread scratch buffer
+    //(appendPlayback copies the samples), sized exactly: the SoundFile below uses all of it.
+    static thread_local std::vector<short> voice;
+    voice.resize(static_cast<size_t>(sampleCount) * 2);
     if (channels == 1) {  //copy to stereo
         for (auto q = 0; q < sampleCount; q++) {
             voice[q * 2] = samples[q];
@@ -853,6 +888,8 @@ void ts3plugin_onClientSelfVariableUpdateEvent(uint64 serverConnectionHandlerID,
 
         const auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(serverConnectionHandlerID);
         if (clientDataDir && clientDataDir->myClientData) {
+            if (start && !clientDataDir->myClientData->clientTalkingNow)
+                clientDataDir->myClientData->effects.requestStateReset(); //new talk: drop delay/HRTF state of the previous one
             clientDataDir->myClientData->clientTalkingNow = start;
         }
         const auto serverId = Teamspeak::getCurrentServerConnection();
@@ -977,6 +1014,8 @@ void processTangentPress(TSServerID serverId, const std::vector<std::string_view
     if ((senderClientData->currentTransmittingTangentOverType != sendingRadioType::LISTEN_TO_NONE) != pressed) {
         playPressed = pressed;
     }
+    if (playPressed) //new transmission: drop the radio effect state of the previous one
+        senderClientData->effects.requestStateReset();
 
     //tell his clientData where he is transmitting from
     if (pressed) {
@@ -1085,6 +1124,8 @@ void processPluginCommand(std::string_view command) {
         clientData->voiceVolume = std::atoi(volume.data());
         clientData->pluginEnabled = true;
         clientData->pluginEnabledCheck = std::chrono::steady_clock::now();
+        if (start && !clientData->clientTalkingNow)
+            clientData->effects.requestStateReset(); //new talk: drop delay/HRTF state of the previous one
         clientData->clientTalkingNow = start;
         if (!myCommand) {
             setGameClientMuteStatus(serverId, clientData->clientId);

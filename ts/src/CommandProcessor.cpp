@@ -502,6 +502,8 @@ void CommandProcessor::processTangent(const std::vector<std::string_view>& token
 
     if (pressed) {
         myClientData->range = helpers::parseArmaNumberToInt(tokens[3]); //range needs to be set to indicate that we are transmitting
+        if (myClientData->currentTransmittingTangentOverType == sendingRadioType::LISTEN_TO_NONE)
+            myClientData->effects.requestStateReset(); //new transmission: drop the radio effect state of the previous one
         myClientData->currentTransmittingTangentOverType = (tokens[0] == "TANGENT_LR") ? sendingRadioType::LISTEN_TO_LR : sendingRadioType::LISTEN_TO_SW;
 
         myClientData->setCurrentTransmittingFrequency(tokens[2]);

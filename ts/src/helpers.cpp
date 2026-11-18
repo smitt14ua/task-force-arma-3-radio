@@ -69,6 +69,11 @@ drawLine3D [ASLToAGL eyePos player2, ASLToAGL (eyePos player2) vectorAdd (upVec 
 
     auto myRightVector = myViewDirection.crossProduct({ 0,0,1 });
     auto myUpVector = myRightVector.crossProduct(myViewDirection);
+    //Looking straight up/down the view is parallel to z and the up vector degenerates to 0 (X3DAudio then yields NaN).
+    //Any horizontal vector is orthogonal to a vertical view, so use north. Normal views are unchanged.
+    constexpr float degenerateLengthSqr = 1e-8f;
+    if (!(myUpVector.lengthSqr() > degenerateLengthSqr))
+        myUpVector = Vector3D(0.f, 1.f, 0.f);
 
     //listener.OrientFront = { 0,-1,0 };
 
@@ -103,52 +108,64 @@ drawLine3D [ASLToAGL eyePos player2, ASLToAGL (eyePos player2) vectorAdd (upVec 
 
     auto emitterRightVector = emitterViewDirection.normalized().crossProduct({ 0,0,1 });
     auto emitterUpVector = emitterRightVector.crossProduct(emitterViewDirection.normalized());
+    if (!(emitterUpVector.lengthSqr() > degenerateLengthSqr)) //see listener
+        emitterUpVector = Vector3D(0.f, 1.f, 0.f);
     //emitter.OrientFront = { 0,1,0 };
     std::tie(emitter.OrientTop.x, emitter.OrientTop.y, emitter.OrientTop.z) = emitterUpVector.get();
     emitter.ChannelCount = 1;
-    emitter.CurveDistanceScaler = emitterVoiceVolume;
+    //The curve distances are relative to this: 0 (voice volume 0) divides by zero
+    emitter.CurveDistanceScaler = static_cast<float>(std::max(emitterVoiceVolume, 1));
     emitter.ChannelRadius = 1.f;
 
-    const float volumePerMeter = emitterVoiceVolume / 20.f;
-    std::array<X3DAUDIO_DISTANCE_CURVE_POINT, 25> distanceCurves{
-        X3DAUDIO_DISTANCE_CURVE_POINT{0.f, 1.f},
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.05, volumeAttenuation(volumePerMeter, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.10, volumeAttenuation(volumePerMeter*2, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.15, volumeAttenuation(volumePerMeter*3, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.20, volumeAttenuation(volumePerMeter*4, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.25, volumeAttenuation(volumePerMeter*5, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.30, volumeAttenuation(volumePerMeter*6, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.35, volumeAttenuation(volumePerMeter*7, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.40, volumeAttenuation(volumePerMeter*8, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.45, volumeAttenuation(volumePerMeter*9, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.50, volumeAttenuation(volumePerMeter*10, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.55, volumeAttenuation(volumePerMeter*11, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.60, volumeAttenuation(volumePerMeter*12, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.65, volumeAttenuation(volumePerMeter*13, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.70, volumeAttenuation(volumePerMeter*14, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.75, volumeAttenuation(volumePerMeter*15, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.80, volumeAttenuation(volumePerMeter*16, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.85, volumeAttenuation(volumePerMeter*17, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.90, volumeAttenuation(volumePerMeter*18, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 0.95, volumeAttenuation(volumePerMeter*19, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 1.05, volumeAttenuation(volumePerMeter*20, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 1.10, volumeAttenuation(volumePerMeter*24, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 1.15, volumeAttenuation(volumePerMeter*28, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 1.20, volumeAttenuation(volumePerMeter*32, shouldPlayerHear, emitterVoiceVolume) },
-        X3DAUDIO_DISTANCE_CURVE_POINT{ 1.25, 0.0 }
-    };
+    //The curve only depends on these two, cache it instead of 23 powf per call (per audio thread, few distinct volumes)
+    using DistanceCurve = std::array<X3DAUDIO_DISTANCE_CURVE_POINT, 25>;
+    static thread_local std::map<std::pair<bool, int>, DistanceCurve> curveCache;
+    auto cachedCurve = curveCache.find({ shouldPlayerHear, emitterVoiceVolume });
+    if (cachedCurve == curveCache.end()) {
+        if (curveCache.size() > 64) curveCache.clear(); //bound it, the voice volume comes from other clients
+        const float volumePerMeter = emitterVoiceVolume / 20.f;
+        const DistanceCurve distanceCurves{
+            X3DAUDIO_DISTANCE_CURVE_POINT{0.f, 1.f},
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.05, volumeAttenuation(volumePerMeter, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.10, volumeAttenuation(volumePerMeter*2, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.15, volumeAttenuation(volumePerMeter*3, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.20, volumeAttenuation(volumePerMeter*4, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.25, volumeAttenuation(volumePerMeter*5, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.30, volumeAttenuation(volumePerMeter*6, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.35, volumeAttenuation(volumePerMeter*7, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.40, volumeAttenuation(volumePerMeter*8, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.45, volumeAttenuation(volumePerMeter*9, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.50, volumeAttenuation(volumePerMeter*10, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.55, volumeAttenuation(volumePerMeter*11, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.60, volumeAttenuation(volumePerMeter*12, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.65, volumeAttenuation(volumePerMeter*13, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.70, volumeAttenuation(volumePerMeter*14, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.75, volumeAttenuation(volumePerMeter*15, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.80, volumeAttenuation(volumePerMeter*16, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.85, volumeAttenuation(volumePerMeter*17, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.90, volumeAttenuation(volumePerMeter*18, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 0.95, volumeAttenuation(volumePerMeter*19, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 1.05, volumeAttenuation(volumePerMeter*20, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 1.10, volumeAttenuation(volumePerMeter*24, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 1.15, volumeAttenuation(volumePerMeter*28, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 1.20, volumeAttenuation(volumePerMeter*32, shouldPlayerHear, emitterVoiceVolume) },
+            X3DAUDIO_DISTANCE_CURVE_POINT{ 1.25, 0.0 }
+        };
+        cachedCurve = curveCache.emplace(std::make_pair(shouldPlayerHear, emitterVoiceVolume), distanceCurves).first;
+    }
     X3DAUDIO_DISTANCE_CURVE dCurve;
-    dCurve.pPoints = distanceCurves.data();
-    dCurve.PointCount = distanceCurves.size();
+    dCurve.pPoints = cachedCurve->second.data();
+    dCurve.PointCount = static_cast<UINT32>(cachedCurve->second.size());
     emitter.pVolumeCurve = &dCurve;
 
 
     X3DAUDIO_DSP_SETTINGS output{ 0 };
 
+    //The handle was initialized for front left + right
+    if (channels != 2) return;
     output.SrcChannelCount = 1;
     output.DstChannelCount = channels;
-    auto volumeMatrix = std::vector<float>();//#X3DAudio minimum 2 channels
-    volumeMatrix.resize(channels);
+    std::array<float, 2> volumeMatrix{};//#X3DAudio minimum 2 channels
     output.pMatrixCoefficients = volumeMatrix.data();
 
     X3DAudioCalculate(
@@ -161,6 +178,10 @@ drawLine3D [ASLToAGL eyePos player2, ASLToAGL (eyePos player2) vectorAdd (upVec 
 
     float gainFrontLeft = volumeMatrix[0];
     float gainFrontRight = volumeMatrix[1];
+    //Last line of defence (e.g. zero view direction): never let NaN reach the samples, fall back to plain distance attenuation
+    if (!std::isfinite(gainFrontLeft) || !std::isfinite(gainFrontRight)) {
+        gainFrontLeft = gainFrontRight = volumeAttenuation(myPosition.distanceTo(emitterPosition), shouldPlayerHear, emitterVoiceVolume);
+    }
 
 
     samples.applyStereoGain(gainFrontLeft, gainFrontRight);
@@ -177,32 +198,25 @@ void helpers::shortFloatMultEx(short * data, size_t elementCount, __m128 multPac
     if (!(CAN_USE_SSE_ON(data)) || elementCount % 8) __debugbreak();
 #endif
 
+    //Clamp in float before the conversion: cvttps returns INT_MIN for values beyond int32 (and NaN),
+    //which would saturate to the wrong sign. In-range values are truncated exactly as before.
+    const __m128 maxShort = _mm_set1_ps(32767.f);
+    const __m128 minShort = _mm_set1_ps(-32768.f);
+    const auto clampToShort = [&](__m128 v) {
+        v = _mm_and_ps(v, _mm_cmpord_ps(v, v)); //NaN -> 0
+        return _mm_max_ps(_mm_min_ps(v, maxShort), minShort);
+    };
     for (size_t i = 0; i < elementCount; i += 8) {
-        __m128i xmm0;
-        __m128i xmm2;
-        const __m128i xmm4{ 0 };
-
-
-        _mm_store_si128(&xmm2, xmm4);
-        __m128i xmm1 = _mm_load_si128(reinterpret_cast<__m128i*>(data + i));
-        xmm2 = _mm_cmpgt_epi16(xmm2, xmm1);
-        _mm_store_si128(&xmm0, xmm1);
-        xmm1 = _mm_unpackhi_epi16(xmm1, xmm2);
-        xmm0 = _mm_unpacklo_epi16(xmm0, xmm2);
-        auto multPack1 = _mm_cvtepi32_ps(xmm1);
-        auto multPack2 = _mm_cvtepi32_ps(xmm0);
-        multPack1 = _mm_mul_ps(multPack1, multPack);
-        multPack2 = _mm_mul_ps(multPack2, multPack);
-        xmm1 = _mm_cvttps_epi32(multPack1);
-        xmm0 = _mm_cvttps_epi32(multPack2);
-        _mm_store_si128(&xmm2, xmm0);
-        xmm0 = _mm_unpacklo_epi16(xmm0, xmm1);
-        xmm2 = _mm_unpackhi_epi16(xmm2, xmm1);
-        _mm_store_si128(&xmm1, xmm0);
-        xmm0 = _mm_unpacklo_epi16(xmm0, xmm2);
-        xmm1 = _mm_unpackhi_epi16(xmm1, xmm2);
-        xmm0 = _mm_unpacklo_epi16(xmm0, xmm1);
-        _mm_store_si128(reinterpret_cast<__m128i*>(data + i), xmm0);
+        const __m128i zero = _mm_setzero_si128();
+        const __m128i in = _mm_load_si128(reinterpret_cast<__m128i*>(data + i));
+        const __m128i sign = _mm_cmpgt_epi16(zero, in);
+        //sign extend to int32
+        const __m128i lo = _mm_unpacklo_epi16(in, sign);
+        const __m128i hi = _mm_unpackhi_epi16(in, sign);
+        const __m128 loF = clampToShort(_mm_mul_ps(_mm_cvtepi32_ps(lo), multPack));
+        const __m128 hiF = clampToShort(_mm_mul_ps(_mm_cvtepi32_ps(hi), multPack));
+        //Saturating pack (the old unpack sequence truncated int32 to int16, so clipping wrapped around)
+        _mm_store_si128(reinterpret_cast<__m128i*>(data + i), _mm_packs_epi32(_mm_cvttps_epi32(loF), _mm_cvttps_epi32(hiF)));
     }
 }
 

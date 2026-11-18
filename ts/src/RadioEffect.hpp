@@ -4,11 +4,29 @@
 #include "helpers.hpp"
 #include <simpleSource/SimpleComp.h>
 #include <numeric>
+#include <chrono>
 #define SAMPLE_RATE 48000
 
 
 #define PI_2     1.57079632679489661923f
 #define DELAY_SAMPLES (SAMPLE_RATE / 20)
+
+//Effect state (delay lines, HRTF buffers) must not carry over from one transmission into the next.
+//The talk/tangent handlers bump clientDataEffects::stateGeneration; the object resets itself on the thread
+//that uses it. Objects that were in use until just now are kept (e.g. the voice while the tangent is pressed).
+class EffectStateResetTracker {
+public:
+    bool shouldReset(uint32_t currentGeneration) {
+        const auto now = std::chrono::steady_clock::now();
+        const bool reset = generation != currentGeneration && now - lastUse > std::chrono::milliseconds(100);
+        generation = currentGeneration;
+        lastUse = now;
+        return reset;
+    }
+private:
+    uint32_t generation{ 0 };
+    std::chrono::steady_clock::time_point lastUse;
+};
 
 class RadioEffect {
 public:
@@ -35,6 +53,13 @@ public:
         return delayLine[delayPosition];
     }
 
+    //Drops the delayed audio of the previous transmission. Call on the thread that runs process.
+    void resetStateIfNewTransmission(uint32_t stateGeneration) {
+        if (!stateReset.shouldReset(stateGeneration)) return;
+        delayLine.fill(0.f);
+        delayPosition = 0;
+    }
+
 
     template<class T>
     static void processFilter(T& filter, float* buffer, int samplesNumber) {
@@ -51,6 +76,7 @@ private:
     std::array<float, DELAY_SAMPLES> delayLine{0.f};
     //std::array<float, DELAY_SAMPLES>::iterator delayPosition{ delayLine.begin() };
     size_t delayPosition{ 0 };
+    EffectStateResetTracker stateReset;
 };
 
 class UnderWaterRadioEffect : public RadioEffect {
@@ -233,8 +259,10 @@ void processRadioEffect(SampleBuffer& samples, float gain, T* effect, stereoMode
     if (stereoMode != stereoMode::stereo) {
         gain *= 1.5f;
     }
-    std::vector<float> buffer;
-    buffer.resize(sampleCount);
+    //Per audio thread scratch buffer, only grows: no allocation per buffer and radio
+    static thread_local std::vector<float> buffer;
+    if (buffer.size() < sampleCount)
+        buffer.resize(sampleCount);
     //((monoCombined / channels) * gain) / 32766
     float monoCombToGainFlt = 1/static_cast<float>(channels) * gain * (1.f/32766.f);
     for (auto i = 0u; i < sampleCount * channels; i += channels) {
@@ -247,14 +275,15 @@ void processRadioEffect(SampleBuffer& samples, float gain, T* effect, stereoMode
         buffer[i / channels] = monoCombined * monoCombToGainFlt;
         //buffer[i / channels] = (static_cast<float>(monoCombined) * gain) / (32766.f * channels);
     }
-    effect->process(buffer.data(), sampleCount);
+    effect->process(buffer.data(), static_cast<int>(sampleCount));
 
+    //saturateToShort only maps NaN to 0 here, clamp already keeps the value in range
     //#TODO trust the optimizer
-    if (stereoMode == stereoMode::stereo) {
+    if (stereoMode == stereoMode::stereo || channels < 2) { //a mono buffer has no left/right
         // put mixed output to stream
         for (auto i = 0u; i < sampleCount * channels; i += channels) {
             float sample = buffer[i / channels];
-            const auto newValue = static_cast<short>(std::clamp(sample, -1.f, 1.f) * 32766.f);
+            const auto newValue = saturateToShort(std::clamp(sample, -1.f, 1.f) * 32766.f);
             for (int j = 0; j < channels; j++) {
                 samples[i + j] = newValue;
             }
@@ -263,7 +292,7 @@ void processRadioEffect(SampleBuffer& samples, float gain, T* effect, stereoMode
         // put mixed output to stream
         for (auto i = 0u; i < sampleCount * channels; i += channels) {
             float sample = buffer[i / channels];
-            const auto newValue = static_cast<short>(std::clamp(sample, -1.f, 1.f) * 32766.f);
+            const auto newValue = saturateToShort(std::clamp(sample, -1.f, 1.f) * 32766.f);
             samples[i] = newValue;
             for (int j = 1; j < channels; j++) {
                 samples[i + j] = 0;
@@ -273,7 +302,7 @@ void processRadioEffect(SampleBuffer& samples, float gain, T* effect, stereoMode
         // put mixed output to stream
         for (auto i = 0u; i < sampleCount * channels; i += channels) {
             float sample = buffer[i / channels];
-            const auto newValue = static_cast<short>(std::clamp(sample, -1.f, 1.f) * 32766.f);
+            const auto newValue = saturateToShort(std::clamp(sample, -1.f, 1.f) * 32766.f);
             samples[i] = 0;
             samples[i+1] = newValue;
             for (int j = 2; j < channels; j++) {
@@ -295,8 +324,8 @@ inline void processCompressor(chunkware_simple::SimpleComp* compressor, SampleBu
             auto Fleft = static_cast<double>(Sleft);
             auto Fright = static_cast<double>(Sright);
             compressor->process(Fleft, Fright);
-            Sleft = static_cast<short>(Fleft);
-            Sright = static_cast<short>(Fright);
+            Sleft = saturateToShort(Fleft);
+            Sright = saturateToShort(Fright);
         }
     }
 }

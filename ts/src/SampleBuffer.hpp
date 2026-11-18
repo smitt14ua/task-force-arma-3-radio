@@ -6,6 +6,16 @@
 
 #define CAN_USE_SSE_ON(x) (IsProcessorFeaturePresent(PF_XMMI64_INSTRUCTIONS_AVAILABLE) && (reinterpret_cast<uintptr_t>(x) % 16 == 0))
 
+//float/double -> short with saturation (a plain cast wraps around on overflow) and NaN -> 0.
+//In-range values are truncated exactly like static_cast<short>.
+template<typename F>
+inline short saturateToShort(F value) {
+    if (value >= static_cast<F>(32767)) return 32767;
+    if (value <= static_cast<F>(-32768)) return -32768;
+    if (value != value) return 0;
+    return static_cast<short>(value);
+}
+
 template<typename Type = short>
 class SampleBufferT {
     class SampleBufferInternal {
@@ -75,19 +85,14 @@ class SampleBufferT {
             return nullptr;
         }
         void copyTo(std::shared_ptr<SampleBufferInternal> target) {
-            auto targetSpace = target->getSampleCount();
-            if (targetSpace != getSampleCount()) {
-                //if (auto vec = std::get_if<std::vector<Type>*>(&target->samples)) {
-                //    (*vec)->resize(getSampleCount() * 2);
-                //}
+            if (target->getSampleCount() != getSampleCount() || target->channels != channels) {
+                //Size by our channel count (was hardcoded * 2, too small for a mono target of a stereo source)
                 if (auto vec = std::get_if<std::vector<Type>>(&target->samples)) {
-                    vec->resize(getSampleCount() * 2);
+                    vec->resize(getSampleCount() * channels);
+                } else {
+                    target->samples = std::vector<Type>(getSampleCount() * channels);
                 }
-                if (auto strct = std::get_if<SampleStruct>(&target->samples)) {
-                    std::vector<Type> vec; 
-                    vec.resize(getSampleCount() * 2);
-                    target->samples = vec;
-                }
+                target->channels = channels;
             }
             std::copy(begin(), end(), target->begin());
         }

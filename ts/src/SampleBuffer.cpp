@@ -16,8 +16,9 @@ void SampleBufferT<short>::applyStereoGain(float gainFrontLeft, float gainFrontR
         helpers::shortFloatMultEx(begin(), (sampleCount * channels) - leftOver, xmm3);
     }
     for (size_t i = sampleCount * channels - leftOver; i < sampleCount * channels; i += channels) {
-        (*this)[i] = static_cast<short>((*this)[i] * gainFrontLeft);
-        (*this)[i + 1] = static_cast<short>((*this)[i + 1] * gainFrontRight);
+        (*this)[i] = saturateToShort((*this)[i] * gainFrontLeft);
+        if (channels > 1) //mono buffer: there is no right sample
+            (*this)[i + 1] = saturateToShort((*this)[i + 1] * gainFrontRight);
     }
 }
 
@@ -33,5 +34,5 @@ void SampleBufferT<short>::applyMonoGain(float gain) {
         helpers::shortFloatMultEx(begin(), (sampleCount * channels) - leftOver, _mm_loadu_ps(multiplier));
     }
     for (size_t i = sampleCount * channels - leftOver; i < sampleCount * channels; i += 1)
-        (*this)[i] = static_cast<short>((*this)[i] * gain);
+        (*this)[i] = saturateToShort((*this)[i] * gain);
 }

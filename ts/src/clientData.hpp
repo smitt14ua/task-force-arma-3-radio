@@ -80,6 +80,14 @@ public:
         compressor.setRatio(0.1);
         compressor.initRuntime();
 
+        //Same tuning, own envelope: the radio stream is compressed separately from direct speech
+        radioCompressor.setSampleRate(48000);
+        radioCompressor.setThresh(80);
+        radioCompressor.setRelease(300);
+        radioCompressor.setAttack(1);
+        radioCompressor.setRatio(0.1);
+        radioCompressor.initRuntime();
+
         resetRadioEffect();
     }
     ~clientDataEffects() = default;
@@ -100,25 +108,32 @@ public:
         filtersSpeakers.erase(key);
     }
 
+    //The effect/clunk getters also drop state left over from the previous transmission (see EffectStateResetTracker),
+    //so call them on the thread that processes the returned object.
     std::shared_ptr<PersonalRadioEffect> getSwRadioEffect(const std::string& key) {
-        return getOrCreate(swEffects, key);
+        return withFreshState(getOrCreate(swEffects, key));
     }
 
     std::shared_ptr<LongRangeRadioEffect> getLrRadioEffect(const std::string& key) {
-        return getOrCreate(lrEffects, key);
+        return withFreshState(getOrCreate(lrEffects, key));
     }
 
     std::shared_ptr<AirborneRadioEffect> getAirborneRadioEffect(const std::string& key) {
-        return getOrCreate(airborneEffects, key);
+        return withFreshState(getOrCreate(airborneEffects, key));
     }
 
 
     std::shared_ptr<UnderWaterRadioEffect> getUnderwaterRadioEffect(const std::string& key) {
-        return getOrCreate(ddEffects, key);
+        return withFreshState(getOrCreate(ddEffects, key));
     }
 
     std::shared_ptr<Clunk> getClunk(const std::string& key) {
-        return getOrCreate(clunks, key);
+        return withFreshState(getOrCreate(clunks, key));
+    }
+
+    //Called when the client starts talking or transmitting (any thread). The objects reset lazily on their audio thread.
+    void requestStateReset() {
+        stateGeneration.fetch_add(1, std::memory_order_relaxed);
     }
 
     void removeClunk(const std::string& key) {
@@ -136,10 +151,25 @@ public:
     }
 
     std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>> getFilterVehicle(const std::string& key, float vehicleVolumeLoss) {
-        const auto byKey = key + std::to_string(vehicleVolumeLoss);
-        return getOrCreate(filtersVehicle, byKey, [vehicleVolumeLoss](auto& filter) { filter.setup(2, 48000, 20000 * (1.0 - vehicleVolumeLoss) / 4.0); });
+        //One filter per key and loss, at the granularity of the old key + std::to_string(loss) (6 decimals),
+        //without building a string per buffer
+        const auto lossKey = static_cast<int32_t>(std::lround(vehicleVolumeLoss * 1000000.f));
+        {
+            LockGuard_shared lock_shared(m_lock);
+            if (const auto byKey = filtersVehicle.find(key); byKey != filtersVehicle.end())
+                if (const auto found = byKey->second.find(lossKey); found != byKey->second.end())
+                    return found->second;
+        }
+        LockGuard_exclusive lock_exclusive(m_lock);
+        auto [it, inserted] = filtersVehicle[key].try_emplace(lossKey);
+        if (inserted) {
+            it->second = std::make_shared<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>();
+            it->second->setup(2, 48000, 20000 * (1.0 - vehicleVolumeLoss) / 4.0);
+        }
+        return it->second;
     }
 
+    //Removes the filters of key for every loss (the old string key + loss never matched here, so they leaked)
     void removeFilterVehicle(const std::string& key) {
         LockGuard_exclusive lock(m_lock);
         filtersVehicle.erase(key);
@@ -147,10 +177,12 @@ public:
 
     std::map<uint8_t, std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>> filtersObjectInterception;
 
-    std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>> getFilterObjectInterception(uint8_t objectCount);
+    //created (optional) is set to true when a new filter was made (which has no history yet)
+    std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>> getFilterObjectInterception(int objectCount, bool* created = nullptr);
 
 
     chunkware_simple::SimpleComp compressor;
+    chunkware_simple::SimpleComp radioCompressor;
     void resetRadioEffect() {
         LockGuard_exclusive lock(m_lock);
         swEffects.clear();
@@ -168,6 +200,15 @@ public:
     }
 private:
     ReadWriteLock m_lock{"clientDataEffects"};
+    std::atomic<uint32_t> stateGeneration{ 0 };
+    //objectInterceptionStrength the cached object interception filters were built with (per client, the setting can change)
+    std::atomic<float> objectInterceptionFilterStrength{ -1.f };
+
+    template<typename T>
+    std::shared_ptr<T> withFreshState(std::shared_ptr<T> effect) {
+        effect->resetStateIfNewTransmission(stateGeneration.load(std::memory_order_relaxed));
+        return effect;
+    }
 
     //Returns the entry for key, creating (and initializing) it if missing.
     //try_emplace under the exclusive lock: a concurrent creator never replaces an object that is already handed out.
@@ -203,7 +244,8 @@ private:
     effectMap<Clunk> clunks;
 
     effectMap<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<4>, MAX_CHANNELS>> filtersCantSpeak;
-    effectMap<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>> filtersVehicle;
+    //key -> (vehicle volume loss * 1e6 -> filter)
+    std::map<std::string, std::map<int32_t, std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>>, std::less<>> filtersVehicle;
     effectMap<Dsp::SimpleFilter<Dsp::Butterworth::BandPass<1>, MAX_CHANNELS>> filtersSpeakers;
     effectMap<Dsp::SimpleFilter<Dsp::Butterworth::BandPass<2>, MAX_CHANNELS>> filtersPhone;
 };
@@ -296,6 +338,7 @@ public:
     std::set<std::string, std::less<>> receivingFrequencies;
     clientDataEffects effects;
     SampleBuffer OISampleBuffer;
+    const void* OIFilterInUse = nullptr; //object interception filter that processed the last buffer (audio thread only, identity only)
 private:
     mutable ReadWriteLock m_lock{"clientData"};
 

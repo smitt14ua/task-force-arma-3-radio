@@ -14,6 +14,21 @@ std::string SoundFile::getFullPath() const {
     return TFAR::getInstance().getPluginPath() + fileName + ".wav";
 }
 
+//Appends sampleCount frames of samples (channels interleaved, channels > 0) to store as interleaved stereo.
+//The old code always copied sampleCount * 2 samples first (overread for mono) and then converted only part of the frames.
+static void appendAsStereo(std::vector<short>& store, const short* samples, size_t sampleCount, int channels) {
+    if (channels == 2) {
+        store.insert(store.end(), samples, samples + (sampleCount * 2));
+        return;
+    }
+    store.reserve(store.size() + (sampleCount * 2));
+    for (size_t frame = 0; frame < sampleCount; frame++) {
+        const short* in = samples + frame * channels;
+        store.push_back(in[0]); //left
+        store.push_back(channels > 1 ? in[1] : in[0]); //right (mono: duplicate)
+    }
+}
+
 
 PlaybackHandler::PlaybackHandler() {
     TFAR::getInstance().doDiagReport.connect([this](std::stringstream& diag) {
@@ -35,9 +50,11 @@ PlaybackHandler::PlaybackHandler() {
 
 void PlaybackHandler::onEditMixedPlaybackVoiceDataEvent(short * samples, int sampleCount, int channels, const unsigned int *, unsigned int * channelFillMask) {
     ProfileFunction;
+    if (channels <= 0 || sampleCount <= 0) return;
     LockGuard_exclusive lock(playbackCriticalSection);
     bool fill = false;
-    std::vector<std::string> to_remove;
+    static thread_local std::vector<std::string> to_remove; //reused, no allocation per buffer
+    to_remove.clear();
     if (!(*channelFillMask & 3)) {
         memset(samples, 0, sampleCount * channels * sizeof(short));
     }
@@ -46,26 +63,26 @@ void PlaybackHandler::onEditMixedPlaybackVoiceDataEvent(short * samples, int sam
         const size_t playbackSampleCount = playback->getSamples(playbackSamples);
         if (playbackSampleCount == 0) continue;
 
-        int outputPosition = 0;
         int inputPosition = 0;
-        //mix stereo sound into multichannel sound
-        while (outputPosition < sampleCount * channels && (static_cast<int>(playbackSampleCount) - inputPosition) > 0) {
-            for (int q = 0; q < 2; q++) {
-#ifdef _DEBUG
-                if (outputPosition > sampleCount * channels) __debugbreak();
-                if (inputPosition > playbackSampleCount) __debugbreak();
-
-#endif   
-                const auto s = playbackSamples[inputPosition];
-
-                samples[outputPosition] = std::clamp(samples[outputPosition] + s, SHRT_MIN, SHRT_MAX);
-
-                outputPosition++;
-                inputPosition++;
-                fill = true;
+        //mix stereo sound (playbacks always hold interleaved stereo) into the output, frame by frame.
+        //Mono output gets the average of both channels: writing two samples per frame overran a mono buffer.
+        const int inputFrames = static_cast<int>(playbackSampleCount / 2);
+        const int frames = std::min(sampleCount, inputFrames);
+        for (int frame = 0; frame < frames; frame++) {
+            short* out = samples + frame * channels;
+            const int left = playbackSamples[inputPosition];
+            const int right = playbackSamples[inputPosition + 1];
+            inputPosition += 2;
+            if (channels == 1) {
+                out[0] = static_cast<short>(std::clamp(out[0] + (left + right) / 2, SHRT_MIN, SHRT_MAX));
+            } else {
+                out[0] = static_cast<short>(std::clamp(out[0] + left, SHRT_MIN, SHRT_MAX));
+                out[1] = static_cast<short>(std::clamp(out[1] + right, SHRT_MIN, SHRT_MAX));
             }
-            outputPosition += std::max(channels - 2, 0);
+            fill = true;
         }
+        if (frames == inputFrames) //all consumed, don't let a stray odd sample keep the playback alive forever
+            inputPosition = static_cast<int>(playbackSampleCount);
         playback->cleanSamples(inputPosition);
         if (playback->isDone()) {
             to_remove.push_back(name);
@@ -90,44 +107,50 @@ void PlaybackHandler::appendPlayback(std::string name, SoundFile file) {
         if (playbacks[name]->type() == playbackType::raw) {
             std::static_pointer_cast<playbackWavRaw>(playbacks[name])->appendSamples(file.samples.data(), file.samples.size(), file.channels);
         } else {
-            MessageBoxA(0, "void PlaybackHandler::appendPlayback(std::string name, SoundFile file) 93", "tfar", 0);
-            __debugbreak();
-            //should not have different playback types with same name.
+            //should not have different playback types with same name. Log only, a message box + break crashed TeamSpeak
+            Logger::log(LoggerTypes::teamspeakClientlog, "appendPlayback: playback " + name + " exists with another type", LogLevel_ERROR);
         }
     }
 }
 
-void PlaybackHandler::appendPlayback(std::string name, SoundFile file, stereoMode stereo, float gain) {
-    LockGuard_exclusive lock(playbackCriticalSection);
-    if (playbacks.count(name) == 0) {
-        if (file.type == SoundFile::SoundFileType::PluginFolderFile) {
-            
-            if (auto wave = getWavFileFromPath(file.getFullPath()))
-                playbacks[name] = std::make_shared<playbackWavStereo>(wave.get(), stereo, gain);//we can use wave.get() because playbackWavStereo doesn't hold a ref to it
-        } else {
-            playbacks[name] = std::make_shared<playbackWavStereo>(file.samples.data(), file.samples.size(), file.channels, stereo, gain);
-        }
-    } else {
-        MessageBoxA(0, "void PlaybackHandler::appendPlayback(std::string name, SoundFile file, stereoMode stereo, float gain) 110", "tfar", 0);
-        __debugbreak();
-        //should not have different playback types with same name.
-        //wavStereo types cannot append
+void PlaybackHandler::insertPlayback(const std::string& name, std::shared_ptr<playbackBase> playback) {
+    if (!playback) return;
+    {
+        LockGuard_exclusive lock(playbackCriticalSection);
+        if (playbacks.try_emplace(name, playback).second) return;
     }
+    //should not have different playbacks with same name (wavStereo types cannot append). Log only, a message box + break crashed TeamSpeak.
+    //playback is destroyed outside the lock (a processing playback joins its thread)
+    Logger::log(LoggerTypes::teamspeakClientlog, "appendPlayback: playback " + name + " already exists", LogLevel_ERROR);
+}
+
+//The playbacks are built (WAV file I/O, processing thread start) before taking playbackCriticalSection,
+//so the mixed playback audio callback isn't blocked by them.
+void PlaybackHandler::appendPlayback(std::string name, SoundFile file, stereoMode stereo, float gain) {
+    std::shared_ptr<playbackBase> playback;
+    if (file.type == SoundFile::SoundFileType::PluginFolderFile) {
+        if (auto wave = getWavFileFromPath(file.getFullPath()))
+            playback = std::make_shared<playbackWavStereo>(wave.get(), stereo, gain);//we can use wave.get() because playbackWavStereo doesn't hold a ref to it
+    } else {
+        playback = std::make_shared<playbackWavStereo>(file.samples.data(), file.samples.size(), file.channels, stereo, gain);
+    }
+    insertPlayback(name, std::move(playback));
 }
 
 void PlaybackHandler::appendPlayback(std::string name, SoundFile file, std::vector<std::function<void(SampleBuffer&)>> functors) {
-    LockGuard_exclusive lock(playbackCriticalSection);
-    if (playbacks.count(name) == 0) {
-        if (file.type == SoundFile::SoundFileType::PluginFolderFile) {
-            if (auto wave = getWavFileFromPath(file.getFullPath()))
-                playbacks[name] = std::make_shared<playbackWavProcessing>(static_cast<short*>(wave->_data.get_ptr()), (wave->_data.get_size() / sizeof(short)) / wave->_spec.channels, wave->_spec.channels, functors);
-        } else {
-            playbacks[name] = std::make_shared<playbackWavProcessing>(file.samples.data(), file.samples.size(), file.channels, functors);
-        }
+    std::shared_ptr<playbackBase> playback;
+    if (file.type == SoundFile::SoundFileType::PluginFolderFile) {
+        if (auto wave = getWavFileFromPath(file.getFullPath()))
+            playback = std::make_shared<playbackWavProcessing>(static_cast<short*>(wave->_data.get_ptr()), (wave->_data.get_size() / sizeof(short)) / wave->_spec.channels, wave->_spec.channels, functors);
     } else {
-        MessageBoxA(0, "void PlaybackHandler::appendPlayback(std::string name, SoundFile file, functors) 128", "tfar", 0);
-        __debugbreak();
+        playback = std::make_shared<playbackWavProcessing>(file.samples.data(), file.samples.size(), file.channels, functors);
     }
+    insertPlayback(name, std::move(playback));
+}
+
+std::string PlaybackHandler::newPlaybackId(const std::string& fileName) {
+    //Unique: fileName + rand() collided (RAND_MAX is 32767)
+    return fileName + "#" + std::to_string(nextPlaybackId.fetch_add(1, std::memory_order_relaxed));
 }
 
 void PlaybackHandler::playWavFile(SoundFile file) {
@@ -141,7 +164,7 @@ void PlaybackHandler::playWavFile(TSServerID serverConnectionHandlerID, SoundFil
     _mm_setcsr((_mm_getcsr() & ~0x0040) | (0x0040));//_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
     if (!Teamspeak::isConnected(serverConnectionHandlerID)) return;
 
-    appendPlayback(file.fileName + std::to_string(rand()), file, stereo, gain);
+    appendPlayback(newPlaybackId(file.fileName), file, stereo, gain);
 }
 
 void PlaybackHandler::playWavFile(TSServerID serverConnectionHandlerID, SoundFile file, float gain, Position3D position, bool onGround, int radioVolume, bool underwater, float vehicleVolumeLoss, bool vehicleCheck, stereoMode stereoMode) {
@@ -153,7 +176,7 @@ void PlaybackHandler::playWavFile(TSServerID serverConnectionHandlerID, SoundFil
     if (!clientDataDir) return;
 
     std::vector<std::function<void(SampleBuffer&)>> processors;
-    const auto id = file.fileName + std::to_string(rand());
+    const auto id = newPlaybackId(file.fileName);
     //apply gain
     if (gain != 1.0f)
         processors.emplace_back([gain](SampleBuffer& samples) {
@@ -219,11 +242,9 @@ void PlaybackHandler::playWavFile(TSServerID serverConnectionHandlerID, SoundFil
                 processors.emplace_back([position, myClientDataWeak = std::weak_ptr<clientData>(myClientData), id](SampleBuffer& samples) {
                     auto myClientData = myClientDataWeak.lock();
                     if (!myClientData) return;
-                    auto pClunk = myClientData->effects.getClunk(id);
                     auto relativePos = myClientData->getClientPosition().directionTo(position);
                     auto viewDirection = myClientData->getViewDirection().toAngle();
                     helpers::applyILD(samples, relativePos, viewDirection); //interaural level difference
-                    myClientData->effects.removeClunk(id);
                 });
             else
                 processors.emplace_back([position, myClientDataWeak = std::weak_ptr<clientData>(myClientData), id](SampleBuffer& samples) {
@@ -265,7 +286,9 @@ void PlaybackHandler::playWavFile(TSServerID serverConnectionHandlerID, SoundFil
     }
 }
 
+//Own lock, not playbackCriticalSection: the file is read while holding it
 std::shared_ptr<clunk::WavFile> PlaybackHandler::getWavFileFromPath(const std::string& filePath) {
+    LockGuard_exclusive lock(wavCacheLock);
     if (auto found = wavCache.find(filePath); found != wavCache.end())
         return found->second;
 
@@ -283,6 +306,7 @@ std::shared_ptr<clunk::WavFile> PlaybackHandler::getWavFileFromPath(const std::s
         if (wav->ok() && wav->_spec.channels == 2 && wav->_spec.sample_rate == 48000) {
             wavCache[filePath] = wav;
         } else {
+            fclose(f); //was leaked on this path
             Logger::log(LoggerTypes::teamspeakClientlog, "Cannot read Soundfile: " + filePath, LogLevel::LogLevel_ERROR);
             return {};
         }
@@ -321,7 +345,9 @@ void playbackWavStereo::construct(std::string wavFilePath, stereoMode stereo, fl
 }
 
 void playbackWavStereo::construct(const short* samples, size_t sampleCount, uint8_t channels, stereoMode stereo, float gain) {
-    sampleStore.assign(samples, samples + sampleCount * 2);
+    sampleStore.clear();
+    if (channels == 0) return;
+    appendAsStereo(sampleStore, samples, sampleCount, channels); //stereo copy (assigning sampleCount * 2 overread a mono source)
 
     //Behaviour of this code changed as you can see, we already copy samples into sampleStore, so we don't need to copy anything. We just need to set stuff to 0
 
@@ -430,32 +456,17 @@ size_t playbackWavRaw::cleanSamples(size_t sampleCount) {
 }
 
 void playbackWavRaw::appendSamples(const short* samples, size_t sampleCount, uint8_t channels) {
-    sampleStore.reserve(sampleStore.size() + (sampleCount * 2));
-    const auto previousEnd = &(*sampleStore.insert(sampleStore.end(), samples, samples + (sampleCount * 2)));
-    //Even if channelcount is not 2 we still want to set the new vector size
-    //If its not stereo we overwrite the data again with the proper 2 channel stuff
-    if (channels != 2) {
-        uint32_t posInTarget = 0;
-        for (uint32_t q = 0; q < sampleCount; q += channels) {
-            previousEnd[posInTarget++] = samples[q];//copy left channel
-            previousEnd[posInTarget++] = samples[q + 1];//copy right channel
-        }
-    }
+    if (channels == 0) return;
+    appendAsStereo(sampleStore, samples, sampleCount, channels);
 }
 
 playbackWavProcessing::playbackWavProcessing(const short* samples, size_t sampleCount, int channels, std::vector<std::function<void(SampleBuffer&)>> processors)
     : currentPosition(0), processingDone(false), myThread(nullptr) {
     functors = processors;
-    const auto previousEnd = &(*sampleStore.insert(sampleStore.end(), samples, samples + (sampleCount * 2)));
-    //Even if channelcount is not 2 we still want to set the new vector size
-    //If its not stereo we overwrite the data again with the proper 2 channel stuff
-    if (channels != 2) {
-        size_t posInTarget = 0;
-        for (size_t q = 0; q < sampleCount; q += channels) {
-            previousEnd[posInTarget++] = samples[q];//copy left channel
-            previousEnd[posInTarget++] = samples[q + 1];//copy right channel
-        }
-    }
+    if (channels > 0)
+        appendAsStereo(sampleStore, samples, sampleCount, channels);
+    else
+        sampleCount = 0;
 #ifdef DEBUG_PLAYBACK_TIMES
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 #endif

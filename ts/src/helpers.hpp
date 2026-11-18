@@ -186,7 +186,9 @@ public:
                 short newValue;
                 if (sample > 1.0) newValue = SHRT_MAX;
                 else if (sample < -1.0) newValue = SHRT_MIN;
-                else newValue = static_cast<short>(sample * (SHRT_MAX - 1));
+                else if (sample == sample) newValue = static_cast<short>(sample * (SHRT_MAX - 1));
+                else newValue = 0; //NaN from an unstable filter
+
                 samples[i + j] = newValue;
             }
         }

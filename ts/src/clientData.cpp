@@ -54,21 +54,26 @@ extern float debugDisplayThing2;
 //}
 
 std::shared_ptr<Dsp::SimpleFilter<Dsp::Butterworth::LowPass<2>, MAX_CHANNELS>>
- clientDataEffects::getFilterObjectInterception(uint8_t objectCount) {
-    objectCount = std::min(objectCount, static_cast<uint8_t>(5));
-    static float lastStrength = 400;
-    if (auto newStrength = TFAR::config.get<float>(Setting::objectInterceptionStrength); newStrength != lastStrength) {
+ clientDataEffects::getFilterObjectInterception(int objectCount, bool* created) {
+    objectCount = std::clamp(objectCount, 0, 5);
+    //Per instance: a function-static "last strength" cleared only the cache of the client that noticed the change first
+    const auto strength = TFAR::config.get<float>(Setting::objectInterceptionStrength);
+    if (strength != objectInterceptionFilterStrength.load()) {
         LockGuard_exclusive lock_exclusive(m_lock);
-        filtersObjectInterception.clear();
-        lastStrength = newStrength;
+        if (strength != objectInterceptionFilterStrength.load()) {
+            filtersObjectInterception.clear();
+            objectInterceptionFilterStrength = strength;
+        }
     }
 
-    debugDisplayThing = 2000 - (objectCount * lastStrength);
-    debugDisplayThing2 = objectCount;
-    const auto strength = lastStrength;
+    //strength goes up to 1800, so 2000 - count * strength can reach 0 or below: an unstable filter that outputs NaN forever
+    const auto cutoff = std::max(2000.f - (objectCount * strength), 50.f);
+    debugDisplayThing = cutoff;
+    debugDisplayThing2 = static_cast<float>(objectCount);
     //#TODO not happy with that..
-    return getOrCreate(filtersObjectInterception, objectCount, [objectCount, strength](auto& filter) {
-        filter.setup(2, 48000, 2000 - (objectCount * strength));
+    return getOrCreate(filtersObjectInterception, static_cast<uint8_t>(objectCount), [cutoff, created](auto& filter) {
+        filter.setup(2, 48000, cutoff);
+        if (created) *created = true;
     });
 }
 
