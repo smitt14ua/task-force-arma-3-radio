@@ -180,6 +180,8 @@ void PipeThread() {
         TFAR::getInstance().onGameDisconnected();
         //Towers belong to the mission: drop them when it ended. After a timeout (pause, alt-tab) keep them, the mod
         //only re-sends them if the config refresh reaches it, which a SETCFG during reconnect can prevent.
+        //Best effort: the zeroed GameTick is missed if the game calls the extension again before the plugin polls,
+        //then the towers stay as before this change.
         if (pipeHandler.disconnectWasMissionEnd)
             TFAR::getAntennaManager()->clearAntennas();
     });
@@ -415,8 +417,8 @@ void ts3plugin_shutdown() {
     TFAR::getCommandProcessor()->stopThread();
     TFAR::getInstance().onShutdown();//Call shutdown Signal
     //A still running update check/tracking request would keep this DLL loaded, and re-enabling the plugin would then
-    //reuse this instance with the signal slots onShutdown just removed. They give up after a few seconds.
-    if (!helpers::waitForDetachedThreads(std::chrono::seconds(12)))
+    //reuse this instance with the signal slots onShutdown just removed. Short, this blocks TeamSpeak's main thread.
+    if (!helpers::waitForDetachedThreads(std::chrono::seconds(3)))
         Logger::log(LoggerTypes::teamspeakClientlog, "shutdown: background request still running, re-enabling TFAR needs a TeamSpeak restart", LogLevel_WARNING);
 
     TFAR::getInstance().m_gameData.alive = false;

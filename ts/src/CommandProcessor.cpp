@@ -411,9 +411,7 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) {
         } return;
         case gameCommand::MISSIONEND: //Handled by pipe extension. That sets last GameTick to 0 so SharedMemoryHandler::onDisconnected will fire
             //TFAR::getInstance().onGameDisconnected();
-            //Towers belong to the mission. This always arrives (in order, before the next mission's towers), while the
-            //zeroed GameTick can be overwritten by the game's next call before the plugin sees it.
-            TFAR::getAntennaManager()->clearAntennas();
+            //Practically never arrives: the extension wipes the async queue right after queueing it (onShutdown)
             return;
         case gameCommand::AddRadioTower: {
             auto data = helpers::split(tokens[1], 0xA);
