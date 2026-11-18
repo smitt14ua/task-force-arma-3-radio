@@ -1553,8 +1553,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Select previous personal radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Select next long range radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Select previous long range radio.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Change personal radio stereo mode.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Change long range radio stereo mode.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Transmit on additional channel of personal radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Transmit on additional channel of long range radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	To exit from the radio interface.</Original>
@@ -1577,8 +1575,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Select previous personal radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Select next long range radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Select previous long range radio.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Change personal radio stereo mode.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Change long range radio stereo mode.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Transmit on additional channel of personal radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Transmit on additional channel of long range radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	To exit from the radio interface.</English>
@@ -1601,8 +1597,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Zvolit předchozí osobní vysílačku.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Zvolit následující vysílačku pro dlouhou vzdálenost.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Zvolit předchozí vysílačku pro dlouhou vzdálenost.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Změnit stereo mód u osobní vysílačky.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Změnit stereo mód u vysílačky pro dlouhou vzdálenost.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Vysílání na dodatečném kanálu osobní vysílačky.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Vysílání na dodatečném kanálu vysílačky pro dlouhou vzdálenost.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Opuštění rozhraní vysílačky.</Czech>
@@ -1647,8 +1641,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Seleccionar radio personal anterior.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Seleccionar siguiente de largo alcance.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Seleccionar radio de largo alcance anterior.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Cambiar modo stero de la radio personal.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Cambiar modo stero de la radio de largo alcance.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Transmitir por el el canal adicional de la radio personal.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Transmitir por el canal adicional de la radio de largo alcance.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Para salir del interfaz de las radios.</Spanish>
@@ -1667,8 +1659,8 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Selezionare precedente radio personale.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Selezionare prossima lunga portata radio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Selezionare precedente la radio a lungo raggio.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Passare alla modalità radio stereo personale.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Passare alla modalità radio stereo lungo raggio.&lt;br/&gt;
+&lt;font color=&quot;#67ED24&quot;&gt;CTRL + Freccia su/sinistra/destra&lt;/font&gt;	Passare alla modalità radio stereo personale.&lt;br/&gt;
+&lt;font color=&quot;#67ED24&quot;&gt;ALT + Freccia su/sinistra/destra&lt;/font&gt;	Passare alla modalità radio stereo lungo raggio.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Trasmettere sul canale aggiuntivo di radio personale.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Trasmettere sul canale supplementare di lunga radiofonica gamma.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Per uscire dalla interfaccia radio.</Italian>
@@ -1691,8 +1683,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Wybieranie poprzedniego radia SW.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Wybieranie następnego radia LR.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Wybieranie poprzedniego radia LR.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Zmiana trybu stereo radia SW.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Zmiana trybu stereo radia LR.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Nadawanie na dodatkowym kanale radia SW.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Nadawanie na dodatkowym kanale  radia LR.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Zamknięcie interfejsu radia.</Polish>
@@ -1715,8 +1705,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Selecionar rádio de curta anterior.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Selecionar próximo rádio de longa.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Selecionar rádio de longa anterior.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Mudar configurações de estéreo para o rádio de curta.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	udar configurações de estéreo para o rádio de longa.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Transmitir no canal adicional do rádio de curta.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Transmitir no canal adicional do rádio de longa.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Sair da interface de rádio.</Portuguese>
@@ -1734,8 +1722,8 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Предыдущая рация ближней связи.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Следующая рация дальней связи.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Предыдущая рация дальней связи.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Изменение стерео режима рации ближней связи.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Изменение стерео режима рации дальней связи.&lt;br/&gt;
+&lt;font color=&quot;#67ED24&quot;&gt;CTRL + стрелка вверх/влево/вправо&lt;/font&gt;	Изменение стерео режима рации ближней связи.&lt;br/&gt;
+&lt;font color=&quot;#67ED24&quot;&gt;ALT + стрелка вверх/влево/вправо&lt;/font&gt;	Изменение стерео режима рации дальней связи.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Передача на дополнительном канале персональной рации.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Передача на дополнительном канале рации дальней связи.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Выход из интерфейса рации.&lt;br/&gt;</Russian>
@@ -1758,8 +1746,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;STRG + [&lt;/font&gt;	Vorheriges Funkgerät wählen.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;STRG + ALT + ]&lt;/font&gt;	Nächstes Langstreckenfunkgerät wählen.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;STRG + ALT + [&lt;/font&gt;	Vorheriges Langstreckenfunkgerät wählen.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;STRG + [←,↑,→]&lt;/font&gt;	Stereoeinstellungen für das Funkgerät ändern.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Stereoeinstellungen für das Langstreckenfunkgerät ändern.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Auf dem zusätzlichen Kanal des Funkgerätes senden.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Auf dem zusätzlichen Kanal des Langstreckenfunkgerätes senden.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Funkoberfläche verlassen.</German>
@@ -1782,8 +1768,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	이전 개인 무전기 선택&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	다음 장파 무전기 선택&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	이전 단파 무전기 선택&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	개인 무전기 스테레오 모드 변경&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	장파 무전기 스테레오 모드 변경&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	개인 무전기의 추가 채널에 말하기&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	장파 무전기의 추가 채널에 말하기&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	무전기 인터페이스에서 나가기</Korean>
@@ -1806,8 +1790,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	前の個人用無線機を選択する。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	次の長距離無線機を選択する。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	前の長距離無線機を選択する。&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	個人用無線機のステレオ モードを変更。&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	長距離無線機のステレオ モードを変更。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	個人用無線機の追加チャンネルを使って話す。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	長距離無線機の追加チャンネルを使って話す。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	無線機を閉じる。</Japanese>
@@ -1830,8 +1812,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	選擇前一把短程無線電。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	選擇下一把長程無線電。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	選擇前一把長程無線電。&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	切換短程無線電聲道模式。&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	切換長程無線電聲道模式。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	使用短程無線電的附加頻道發話。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	使用長程無線電的附加頻道發話。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	離開無線電設定介面。</Chinese>
@@ -1854,8 +1834,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt; 选择前一把短程无线电。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt; 选择下一把长程无线电。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt; 选择前一把长程无线电。&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt; 切换短程无线电声道模式。&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt; 切换长程无线电声道模式。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt; 使用短程无线电的附加频道发话。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt; 使用长程无线电的附加频道发话。&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt; 离开无线电设定介面。</Chinesesimp>
@@ -1878,8 +1856,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Bir önceki kişisel radyoyu seç.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Bir sonraki uzun menzilli radyoyu seç.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Bir önceki kısa menzilli radyoyu seç.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Kişisel radyonda ses modunu değiştirme.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Uzun menzilli radyoda ses modunu değiştirme.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Kişisel radyonda ek kanak üzerinden iletme.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Uzun menzilli radyonda ek kanal üzerinden iletme.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Radyo arayüzünden çıkma.</Turkish>
@@ -1902,8 +1878,6 @@
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + [&lt;/font&gt;	Попередня рація ближнього зв'язку.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + ]&lt;/font&gt;	Наступна рація далекого зв'язку.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;CTRL + ALT + [&lt;/font&gt;	Попередня рація далекого зв'язку.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;CTRL + [←,↑,→]&lt;/font&gt;	Зміна стереорежиму рації ближнього зв'язку.&lt;br/&gt;
-&lt;font color=&quot;#67ED24&quot;&gt;ALT + [←,↑,→]&lt;/font&gt;	Зміна стереорежиму рації далекого зв'язку.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;T&lt;/font&gt;	Передача на додатковому каналі особистої рації.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;Y&lt;/font&gt;	Передача на додатковому каналі рації далекого зв'язку.&lt;br/&gt;
 &lt;font color=&quot;#67ED24&quot;&gt;ESC&lt;/font&gt;	Вихід з інтерфейсу рації.</Ukrainian>

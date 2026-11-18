@@ -247,6 +247,7 @@ PREP(setRadioOwner);
 PREP(setLrSpeakers);
 PREP(settingForceArray);
 PREP(showRadioDialogFrequency);
+PREP(sanitizeFrequencyInput);
 // U
 PREP(updateRadioDialogFrequency);
 PREP(updateSpeakVolumeUI);

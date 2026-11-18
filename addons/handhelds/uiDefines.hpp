@@ -5,7 +5,8 @@
 #define TFAR_CHANNEL_NAME_EDIT_HANDLER(RADIO,CHANNEL_IDC) \
     onMouseButtonDown = QUOTE([ARR_4(_this select 0,RADIO,false,CHANNEL_IDC)] call TFAR_fnc_showRadioDialogFrequency;); \
     onSetFocus = QUOTE([ARR_4(_this select 0,RADIO,false,CHANNEL_IDC)] call TFAR_fnc_showRadioDialogFrequency;); \
-    onKeyDown = QUOTE([ARR_4(_this select 0,RADIO,false,CHANNEL_IDC)] call TFAR_fnc_showRadioDialogFrequency;)
+    onKeyDown = QUOTE([ARR_4(_this select 0,RADIO,false,CHANNEL_IDC)] call TFAR_fnc_showRadioDialogFrequency;); \
+    onEditChanged = QUOTE(_this call TFAR_fnc_sanitizeFrequencyInput;)
 #define TFAR_CHANNEL_NAME_CLEAR_ACTION(DISPLAY_IDD,EDIT_IDC,CHANNEL_IDC) \
     action = QUOTE([ARR_2((findDisplay DISPLAY_IDD) displayCtrl EDIT_IDC,CHANNEL_IDC)] call TFAR_fnc_clearRadioDialogFrequency;)
 //--- anprc152_radio_dialog
