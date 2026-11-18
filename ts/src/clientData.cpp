@@ -344,9 +344,10 @@ std::vector<LISTED_INFO> clientData::isOverRadio(std::shared_ptr<clientData>& my
         (canUseLRRadio && (currentTransmittingTangentOverType == sendingRadioType::LISTEN_TO_LR || ignoreLrTangent))) { //Sending over LR
         auto currentFrequency = getCurrentTransmittingFrequency();
         LockGuard_shared lock(TFAR::getInstance().m_gameData.m_lock);
-        for (const auto& it : TFAR::getInstance().m_gameData.speakers) {
-            if (it.first != currentFrequency) continue;
-            auto& speaker = it.second;
+        //Same order as a full scan: equivalent keys keep their insertion order
+        const auto [speakersBegin, speakersEnd] = TFAR::getInstance().m_gameData.speakers.equal_range(currentFrequency);
+        for (auto it = speakersBegin; it != speakersEnd; ++it) {
+            auto& speaker = it->second;
             auto speakerOwner = speaker.client.lock();
             //If the speaker is Senders backpack we don't hear it.. Because he is sending with his Backpack so it can't receive
             //Also because we would normally hear him twice

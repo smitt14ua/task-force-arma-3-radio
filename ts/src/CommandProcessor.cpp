@@ -167,20 +167,6 @@ std::string CommandProcessor::processCommand(const std::string& command) {
 
             return result;
         }
-        case gameCommand::RECV_FREQS: {
-            const auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(Teamspeak::getCurrentServerConnection());
-            if (!clientDataDir) return "[]";
-            const auto clientData = clientDataDir->myClientData;
-            if (!clientData)
-                return "[]";
-            std::stringstream str;
-            str << "[";
-            for (auto& it : clientData->receivingFrequencies) {
-                str << '"' << it << "\",";
-            }
-            str.seekg(-1, std::stringstream::cur);
-            str << "]";
-        }
     }
 
     return "ASYNC COMMAND SENT IN SYNC CONTEXT";
@@ -310,6 +296,9 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) {
             const std::string& nickname = convertNickname(tokens[5]);
             std::string myNickname = Teamspeak::getMyNickname(currentServerConnectionHandlerID);
             if (!myNickname.empty() && myNickname != nickname && (nickname != "Error: No unit" && nickname != "Error: No vehicle" && nickname != "any")) {
+                //Requests the rename (retries of the same name are rate limited inside). Our own data is indexed under
+                //the game name right away: our own POS commands use it, also while (or if) TS hasn't applied it.
+                //TS confirms a successful rename with onUpdateClientEvent, which re-indexes under the same name again.
                 if (Teamspeak::setMyNicknameToGameName(currentServerConnectionHandlerID, nickname)) {
                     TFAR::getInstance().onTeamspeakClientUpdated(currentServerConnectionHandlerID, clientDataDir->myClientData->clientId, nickname);
                 }
@@ -376,7 +365,7 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) {
                 std::lock_guard<std::mutex> shownLock(shownMutex);
                 if (const auto [it, inserted] = shownMessages.insert(std::move(msg)); inserted) {
                     const char* text = it->c_str();
-                    std::thread([text]() { MessageBoxA(0, text, "Task Force Radio", MB_OK); }).detach();
+                    helpers::runDetached([text]() { MessageBoxA(0, text, "Task Force Radio", MB_OK); });
                 }
                 return;
             }
@@ -463,9 +452,9 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) {
             fsd << diag.str();
 
             std::stringstream pos;
-            TFAR::getInstance().doTypeDiagReport("pos", diag);
+            TFAR::getInstance().doTypeDiagReport("pos", pos);
             std::ofstream fsp(basePath + "pos.log");
-            fsp << diag.str();
+            fsp << pos.str();
             Teamspeak::printMessageToCurrentTab((std::string("TFAR: logged to ") + basePath).c_str());
 
         }
@@ -632,22 +621,32 @@ void CommandProcessor::releaseAllTangents(std::string_view nickname, TSServerID 
 
 void CommandProcessor::processSpeakers(std::vector<std::string_view>& tokens) const {
     //#TODO we don't really need to send Speakers every time.. Their pos is always static. Either on a person or on ground
-    LockGuard_exclusive lock(TFAR::getInstance().m_gameData.m_lock);
-    TFAR::getInstance().m_gameData.speakers.clear();
-    if (tokens.size() != 2)
+    //Parsed without the lock (the audio thread reads speakers under it) and swapped in at the end.
+    //Whatever got parsed is applied, also on early exit (empty if the command is malformed).
+    decltype(gameData::speakers) speakers;
+    const auto swapIn = [&speakers]() {
+        LockGuard_exclusive lock(TFAR::getInstance().m_gameData.m_lock);
+        TFAR::getInstance().m_gameData.speakers.swap(speakers);
+    };
+    if (tokens.size() != 2) {
+        swapIn();
         return;
+    }
     ProfileFunction;
 
     //if you switch TS tab... You don't get speakers bro!
     const auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(Teamspeak::getCurrentServerConnection());
-    if (!clientDataDir) return;
+    if (!clientDataDir) {
+        swapIn();
+        return;
+    }
 
     for (auto& speaker : helpers::split(tokens[1], 0xB)) {
         if (speaker.empty()) continue;
 
         std::vector<std::string_view> parts; parts.reserve(7);
         helpers::split(speaker, 0xA, parts);
-        if (parts.size() < 6) return;
+        if (parts.size() < 6) break;
         //parts radio_id,nickname,pos,volume,vehicle,(waveZ)
         const auto clientData = clientDataDir->getClientData(convertNickname(parts[2]));
 
@@ -663,9 +662,10 @@ void CommandProcessor::processSpeakers(std::vector<std::string_view>& tokens) co
             data.waveZ = data.pos.isNull() ? 1 : data.pos[2];
 
         for (auto& freq : helpers::split(parts[1], '|')) {
-            TFAR::getInstance().m_gameData.speakers.insert(std::pair<std::string, SPEAKER_DATA>(freq, data));
+            speakers.insert(std::pair<std::string, SPEAKER_DATA>(freq, data));
         }
     }
+    swapIn();
 }
 
 void CommandProcessor::processUnitKilled(std::string &&name, TSServerID serverConnection) const {

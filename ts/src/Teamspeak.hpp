@@ -9,6 +9,8 @@
 #include <unordered_set>
 #include <memory>
 #include <shared_mutex>
+#include <chrono>
+#include <vector>
 
 //All Teamspeak interaction should be in here as static methods.
 
@@ -28,17 +30,30 @@ public:
     void setMyOriginalChannel(dataType::TSChannelID val);
     TSChannelID myLastKnownChannel{ -1 };//Only called via Teamspeak Events. So not multi-threaded
 
+    //Returns false if a rename to this nickname was already requested less than renameRetryInterval ago, else records the request
+    bool shouldRequestRename(const std::string& nickname);
+    void clearRenameRequest();
+
     TSChannelID getChannelIDFromName(const std::string& channelName);
-    void addChannelCache(const char* channelName, TSChannelID channelID);
-    void clearChannelCache();
+    //Adds or renames one channel
+    void setChannelName(TSChannelID channelID, std::string channelName);
+    void removeChannel(TSChannelID channelID);
+    //Replaces the whole cache. For equal names the later channel wins.
+    void setChannelCache(std::vector<std::pair<TSChannelID, std::string>> channels);
 
 private:
+    //Must hold m_criticalSection. Drops channelName -> channelID, falls back to another channel with that name
+    void dropChannelName(const std::string& channelName, TSChannelID channelID);
+
     CriticalSectionLock m_criticalSection{"TeamspeakServerData"};
     std::unordered_set<dataType::TSClientID> mutedClients;
     std::string myOriginalNickname;
     TSClientID myClientID{ -1 };//Too small to need mutex
     TSChannelID myOriginalChannel{ -1 };
     std::unordered_map<std::string, TSChannelID> channelNameToID;
+    std::map<TSChannelID, std::string> channelIDToName;
+    std::string lastRenameRequest;
+    std::chrono::steady_clock::time_point lastRenameRequestTime;
 };
 
 
@@ -100,6 +115,8 @@ public:
     static void _onClientUpdated(TSServerID serverConnectionHandlerID, TSClientID clientID);
     static void _onInit();
     static void _updateChanneNameCache(TSServerID serverConnectionHandlerID);
+    static void _updateChannelName(TSServerID serverConnectionHandlerID, TSChannelID channelID);
+    static void _removeChannelName(TSServerID serverConnectionHandlerID, TSChannelID channelID);
 private:
     static Teamspeak& getInstance();  //Used for accessing stored variables
 

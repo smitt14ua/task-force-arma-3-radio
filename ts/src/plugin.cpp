@@ -285,7 +285,10 @@ int pttCallback([[maybe_unused]] void *arg, int argc, char **argv, [[maybe_unuse
             }
             if (i.substr(0, "delay_ptt_msecs"sv.length()) == "delay_ptt_msecs"sv) {
                 auto values = helpers::split(i, '=');
-                pttDelayMs = std::chrono::milliseconds(std::atoi(values[1].data()));//#TODO proper string_view to i
+                int delay = 0;
+                if (values.size() >= 2) //"delay_ptt_msecs" without "=value" would index past the end
+                    std::from_chars(values[1].data(), values[1].data() + values[1].size(), delay);
+                pttDelayMs = std::chrono::milliseconds(delay);
             }
         }
     }
@@ -318,7 +321,7 @@ int ts3plugin_init() {
     if (
         GetModuleHandleA("task_force_radio_win32") ||
         GetModuleHandleA("task_force_radio_win64") ||
-        GetModuleHandleA("TFAR_dev_win64") ||
+        GetModuleHandleA("TFAR_dev_win32") ||
         GetModuleHandleA("TFAR_dev_win64")
         ) {
         MessageBoxA(0,
@@ -326,7 +329,9 @@ int ts3plugin_init() {
             "The plugins are probably in this directory: "sv) + std::string(pluginPath)).c_str(),
             "Task Force Arrowhead Radio",
             MB_OK | MB_ICONHAND);
-        return 0;
+        //Fail init (TS unloads the plugin again) instead of running half initialized; shutdown has nothing to clean up
+        pluginInitialized = false;
+        return 1;
     }
 
 

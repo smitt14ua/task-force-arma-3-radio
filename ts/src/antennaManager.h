@@ -122,6 +122,7 @@ public:
     AntennaConnection findConnection(const Position3D& from, float maxDistanceToAnt, const Position3D& to);
     void addAntenna(Antenna ant);
     void removeAntenna(const NetID& antennaID);
+    void clearAntennas();
 private:
     std::vector<std::shared_ptr<Antenna>>::iterator findAntenna(const NetID& antennaID);
 

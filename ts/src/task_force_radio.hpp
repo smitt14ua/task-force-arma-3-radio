@@ -49,9 +49,12 @@ public:
         //_alive, speakVolume, _nickname, 
         //waves, TF_terrain_interception_coefficient, _globalVolume,
         //_receivingDistanceMultiplicator, TF_speakerDistance
+        //Parse before taking the lock, the audio thread reads the frequencies under it
+        auto swFrequencies = helpers::parseFrequencies(tokens[1]);
+        auto lrFrequencies = helpers::parseFrequencies(tokens[2]);
         LockGuard_exclusive lock(m_lock);
-        mySwFrequencies = helpers::parseFrequencies(tokens[1]);
-        myLrFrequencies = helpers::parseFrequencies(tokens[2]);
+        mySwFrequencies.swap(swFrequencies);
+        myLrFrequencies.swap(lrFrequencies);
         alive = tokens[3] == "true";
 
 

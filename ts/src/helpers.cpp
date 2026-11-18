@@ -370,3 +370,38 @@ vehicleDescriptor helpers::getVehicleDescriptor(std::string_view vehicleID) {
 float helpers::distanceForDiverRadio() {
     return DD_MIN_DISTANCE + (DD_MAX_DISTANCE - DD_MIN_DISTANCE) * (1.0f - TFAR::getInstance().m_gameData.wavesLevel); //#TODO WTF?! underwater range is influenced by wave intensity?
 }
+
+namespace {
+    struct DetachedTask {
+        std::function<void()> function;
+        HMODULE module;
+    };
+
+    DWORD WINAPI detachedThreadProc(LPVOID parameter) {
+        HMODULE module;
+        {
+            const std::unique_ptr<DetachedTask> task(static_cast<DetachedTask*>(parameter));
+            module = task->module;
+            try {
+                task->function();
+            } catch (...) {}
+        } //Everything of ours is destroyed before the module reference is dropped
+        //Doesn't return into the (possibly unloaded) module
+        FreeLibraryAndExitThread(module, 0);
+    }
+}
+
+void helpers::runDetached(std::function<void()> function) {
+    HMODULE module = nullptr;
+    //Takes a reference on our own DLL, so it stays loaded while the thread runs
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCWSTR>(&detachedThreadProc), &module))
+        return;
+    auto task = std::make_unique<DetachedTask>(DetachedTask{ std::move(function), module });
+    const HANDLE thread = CreateThread(nullptr, 0, &detachedThreadProc, task.get(), 0, nullptr);
+    if (!thread) {
+        FreeLibrary(module);
+        return;
+    }
+    task.release(); //Owned by the thread now
+    CloseHandle(thread);
+}

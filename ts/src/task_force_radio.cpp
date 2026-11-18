@@ -10,6 +10,8 @@
 #include "Teamspeak.hpp"
 #include "Logger.hpp"
 #include "version.h"
+#include "helpers.hpp"
+#include "antennaManager.h"
 
 extern struct TS3Functions ts3Functions;
 
@@ -53,6 +55,8 @@ TFAR::TFAR() {
         Teamspeak::unmuteAll(currentServer); //this may be called twice. If End was caused by PluginDisconnect. But will return immediatly if there are no muted clients
         Teamspeak::setVoiceDisabled(currentServer, !CommandProcessor::vadEnabled); //stop force PTT if we were in a transmission
         if (CommandProcessor::vadEnabled) Teamspeak::hlp_enableVad(); //If voice activation was enabled previously, we want to return it to it's original state
+        //Towers belong to the mission. The mod sends all of them again on the config refresh of the next game.
+        getAntennaManager()->clearAntennas();
     });
 
     onShutdown.connect([this]() {
@@ -225,7 +229,7 @@ void TFAR::trackPiwik(const std::vector<std::string_view>& piwikDataIn) {
     for (auto& it : piwikDataIn)
         piwikData.emplace_back(it);
 
-    std::thread([piwikData = std::move(piwikData)]() {
+    helpers::runDetached([piwikData = std::move(piwikData)]() {
 
         struct trackerCustomVariable {
             unsigned int customVarID;
@@ -274,10 +278,12 @@ void TFAR::trackPiwik(const std::vector<std::string_view>& piwikDataIn) {
                     trackerCustomVariable newCustomVar;
                     std::string id;
                     inStream >> curChar; //curChar has ID now
-                    while (curChar != ',') {
+                    //Truncated input: curChar never changes once the stream failed, so stop instead of looping forever
+                    while (curChar != ',' && inStream) {
                         id.push_back(curChar);
                         inStream >> curChar;
                     }
+                    if (!inStream) return std::vector<trackerCustomVariable>();
                     try {
                         newCustomVar.customVarID = std::stoi(id);
                     }
@@ -285,19 +291,21 @@ void TFAR::trackPiwik(const std::vector<std::string_view>& piwikDataIn) {
 
                     inStream >> curChar;//curChar has first char of name
                     //"name","value"], [2, "name2", 22]]
-                    while (curChar != ',') {
+                    while (curChar != ',' && inStream) {
                         newCustomVar.name.push_back(curChar);
                         inStream >> curChar;
                     }
+                    if (!inStream) return std::vector<trackerCustomVariable>();
                     //newCustomVar.name can be '  "name"  ' or '  223  ' so need to trim " and whitespace
                     newCustomVar.name = trimWhitespaceColon(newCustomVar.name);
 
                     //"value"], [2, "name2", "value2"]]
                     inStream >> curChar;//curChar has "
-                    while (curChar != ']') {
+                    while (curChar != ']' && inStream) {
                         newCustomVar.value.push_back(curChar);
                         inStream >> curChar;
                     }
+                    if (!inStream) return std::vector<trackerCustomVariable>();
                     newCustomVar.value = trimWhitespaceColon(newCustomVar.value);
 
                     out.push_back(newCustomVar);
@@ -354,15 +362,15 @@ void TFAR::trackPiwik(const std::vector<std::string_view>& piwikDataIn) {
         InternetCloseHandle(File);
         InternetCloseHandle(Connection);
         InternetCloseHandle(Initialize);
-    }).detach();
+    });
 }
 
 void TFAR::createCheckForUpdateThread() {
-    std::thread([]() {
+    helpers::runDetached([]() {
         if (isUpdateAvailable()) {
             MessageBoxA(0, "New version of Task Force Arrowhead Radio is available. Check radio.task-force.ru/en", "Task Force Arrowhead Radio Update", MB_OK);
         }
-    }).detach();
+    });
 }
 
 std::shared_ptr<CommandProcessor>& TFAR::getCommandProcessor() {

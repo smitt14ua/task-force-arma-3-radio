@@ -111,6 +111,9 @@ public:
     static float volumeMultiplifier(float volumeValue);
     static std::map<std::string, FREQ_SETTINGS, std::less<>> parseFrequencies(std::string_view string);
     static vehicleDescriptor getVehicleDescriptor(std::string_view vehicleID);
+    //Runs function on a detached thread that keeps the plugin DLL loaded until it is done
+    //(TeamSpeak may unload the plugin while e.g. a MessageBox is still open). Exceptions are swallowed.
+    static void runDetached(std::function<void()> function);
     //String of format [0.123,0.123,0.123]
     static std::vector<float> coordStringToVector(std::string_view coordinateString) {
         std::vector<float> output;

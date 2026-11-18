@@ -81,14 +81,66 @@ dataType::TSChannelID TeamspeakServerData::getChannelIDFromName(const std::strin
     return -1;
 }
 
-void TeamspeakServerData::addChannelCache(const char* channelName, TSChannelID channelID) {
+void TeamspeakServerData::setChannelName(TSChannelID channelID, std::string channelName) {
     LockGuard_exclusive lock(m_criticalSection);
-    channelNameToID.insert_or_assign(channelName, channelID);
+    if (const auto found = channelIDToName.find(channelID); found != channelIDToName.end()) {
+        if (found->second == channelName) return;
+        const auto oldName = std::move(found->second);
+        found->second = channelName;
+        dropChannelName(oldName, channelID); //renamed
+    } else {
+        channelIDToName.emplace(channelID, channelName);
+    }
+    channelNameToID.insert_or_assign(std::move(channelName), channelID);
 }
 
-void TeamspeakServerData::clearChannelCache() {
+void TeamspeakServerData::removeChannel(TSChannelID channelID) {
+    LockGuard_exclusive lock(m_criticalSection);
+    const auto found = channelIDToName.find(channelID);
+    if (found == channelIDToName.end()) return;
+    const auto name = std::move(found->second);
+    channelIDToName.erase(found);
+    dropChannelName(name, channelID);
+}
+
+void TeamspeakServerData::dropChannelName(const std::string& channelName, TSChannelID channelID) {
+    const auto found = channelNameToID.find(channelName);
+    if (found == channelNameToID.end() || found->second != channelID) return; //name points to another channel
+    channelNameToID.erase(found);
+    //Another channel with the same name (in another parent) takes over
+    for (const auto& [otherID, otherName] : channelIDToName) {
+        if (otherName == channelName) {
+            channelNameToID.emplace(channelName, otherID);
+            break;
+        }
+    }
+}
+
+void TeamspeakServerData::setChannelCache(std::vector<std::pair<TSChannelID, std::string>> channels) {
     LockGuard_exclusive lock(m_criticalSection);
     channelNameToID.clear();
+    channelIDToName.clear();
+    for (auto& [channelID, channelName] : channels) {
+        channelNameToID.insert_or_assign(channelName, channelID);
+        channelIDToName.insert_or_assign(channelID, std::move(channelName));
+    }
+}
+
+bool TeamspeakServerData::shouldRequestRename(const std::string& nickname) {
+    //TS rejects some names (in use, too long). FREQ arrives every few hundred ms, don't hammer the server with the same rename.
+    constexpr auto renameRetryInterval = std::chrono::seconds(10);
+    const auto now = std::chrono::steady_clock::now();
+    LockGuard_exclusive lock(m_criticalSection);
+    if (nickname == lastRenameRequest && now - lastRenameRequestTime < renameRetryInterval)
+        return false;
+    lastRenameRequest = nickname;
+    lastRenameRequestTime = now;
+    return true;
+}
+
+void TeamspeakServerData::clearRenameRequest() {
+    LockGuard_exclusive lock(m_criticalSection);
+    lastRenameRequest.clear();
 }
 
 Teamspeak::Teamspeak() {
@@ -250,7 +302,7 @@ void Teamspeak::moveToSeriousChannel(TSServerID serverConnectionHandlerID) {
     if (!seriousChannelID) //Channel not found
         return;
     const auto currentChannel = getChannelOfClient(serverConnectionHandlerID, getMyId(serverConnectionHandlerID));
-    if (currentChannel == seriousChannelID)
+    if (!currentChannel || currentChannel == seriousChannelID) //Unknown current channel: couldn't move back later
         return;
     getServerData(serverConnectionHandlerID)->setMyOriginalChannel(currentChannel);
     auto seriousChannelPassword = TFAR::config.get<std::string>(Setting::serious_channelPassword);
@@ -277,31 +329,39 @@ void Teamspeak::moveFromSeriousChannel(TSServerID serverConnectionHandlerID) {
 }
 
 bool Teamspeak::setMyNicknameToGameName(TSServerID serverConnectionHandlerID, const std::string& nickname) {
-    if (const auto serverDataDir = getServerData(serverConnectionHandlerID); getMyNickname(serverConnectionHandlerID) != serverDataDir->getMyOriginalNickname())
+    const auto serverDataDir = getServerData(serverConnectionHandlerID);
+    //Only the first rename saves the original. Later ones would save a previous in-game name and lose the real one.
+    //Cleared again when the original is restored at game end.
+    if (serverDataDir->getMyOriginalNickname().empty())
         serverDataDir->setMyOriginalNickname(getMyNickname(serverConnectionHandlerID));
 
     static auto shortNameNotify = false;
     if (nickname.length() < 3 && !shortNameNotify) {//Minimum name length for Teamspeak
         shortNameNotify = true;
-        std::thread([length = nickname.length()]() { //Create thread because MessageBox is blocking
+        helpers::runDetached([length = nickname.length()]() { //Create thread because MessageBox is blocking
             auto message = "Your in-game name is too short(" + std::to_string(length) + " characters).\nIt needs to be atleast 3 characters long.\nThis is a Teamspeak limitation, TFAR will not work properly until you change your ingame name.";
             MessageBoxA(nullptr, message.c_str(), "Task Force Arrowhead Radio", MB_ICONERROR);
-        }).detach();
+        });
         return false;
     }
 
+    //Requested recently and TS didn't apply it (yet): don't retry on every FREQ, but report it as requested
+    if (!serverDataDir->shouldRequestRename(nickname))
+        return true;
 
     DWORD error;
     if ((error = ts3Functions.setClientSelfVariableAsString(serverConnectionHandlerID.baseType(), CLIENT_NICKNAME, nickname.c_str())) != ERROR_ok) {
         log("Error setting client nickname", error);
+        serverDataDir->clearRenameRequest(); //Not requested, so nothing is pending
         return false;
     }
-    ts3Functions.flushClientSelfUpdates(ts3Functions.getCurrentServerConnectionHandlerID(), nullptr);
+    ts3Functions.flushClientSelfUpdates(serverConnectionHandlerID.baseType(), nullptr);
     return true;
 }
 
 void Teamspeak::resetMyNickname(TSServerID serverConnectionHandlerID) {
     const auto serverDataDir = getServerData(serverConnectionHandlerID);
+    serverDataDir->clearRenameRequest(); //The next game may rename right away again
     auto origNickname = serverDataDir->getMyOriginalNickname();
     if (origNickname.empty())
         return;
@@ -311,7 +371,7 @@ void Teamspeak::resetMyNickname(TSServerID serverConnectionHandlerID) {
     } else {
         serverDataDir->setMyOriginalNickname("");
     }
-    ts3Functions.flushClientSelfUpdates(ts3Functions.getCurrentServerConnectionHandlerID(), nullptr);
+    ts3Functions.flushClientSelfUpdates(serverConnectionHandlerID.baseType(), nullptr);
 }
 
 void Teamspeak::_onConnectStatusChangeEvent(TSServerID serverConnectionHandlerID, ConnectStatus newState) {
@@ -432,12 +492,14 @@ void Teamspeak::_onInit() {
 }
 
 void Teamspeak::_updateChanneNameCache(TSServerID serverConnectionHandlerID) {
+    //Full rebuild, only on connect. Channel events update single entries.
     const auto serverData = getServerData(serverConnectionHandlerID);
     DWORD error;
     uint64_t* result;
     if ((error = ts3Functions.getChannelList(serverConnectionHandlerID.baseType(), &result)) != ERROR_ok) {
         log("Can't get channel list", error);
     } else {
+        std::vector<std::pair<TSChannelID, std::string>> channels;
         uint64_t* iter = result;
         while (*iter) {
             const uint64 channelId = *iter;
@@ -446,12 +508,30 @@ void Teamspeak::_updateChanneNameCache(TSServerID serverConnectionHandlerID) {
             if ((error = ts3Functions.getChannelVariableAsString(serverConnectionHandlerID.baseType(), channelId, CHANNEL_NAME, &curChannelName)) != ERROR_ok) {
                 log("Can't get channel name", error);
             } else {
-                serverData->addChannelCache(curChannelName, channelId);
+                channels.emplace_back(channelId, curChannelName);
                 ts3Functions.freeMemory(curChannelName);
             }
         }
         ts3Functions.freeMemory(result);
+        serverData->setChannelCache(std::move(channels));
     }
+}
+
+void Teamspeak::_updateChannelName(TSServerID serverConnectionHandlerID, TSChannelID channelID) {
+    DWORD error;
+    char* channelName;
+    if ((error = ts3Functions.getChannelVariableAsString(serverConnectionHandlerID.baseType(), channelID.baseType(), CHANNEL_NAME, &channelName)) != ERROR_ok) {
+        log("Can't get channel name", error);
+        return;
+    }
+    std::string name(channelName);
+    ts3Functions.freeMemory(channelName);
+    getServerData(serverConnectionHandlerID)->setChannelName(channelID, std::move(name));
+}
+
+void Teamspeak::_removeChannelName(TSServerID serverConnectionHandlerID, TSChannelID channelID) {
+    if (const auto serverDataDir = findServerData(serverConnectionHandlerID))
+        serverDataDir->removeChannel(channelID);
 }
 
 void Teamspeak::sendPluginCommand(TSServerID serverConnectionHandlerID, std::string_view pluginID, std::string_view command, PluginTargetMode targetMode, std::vector<TSClientID> targets) {
@@ -510,10 +590,14 @@ void Teamspeak::hlp_disableVad() {
 }
 
 void Teamspeak::log(std::string message, unsigned long errorCode, LogLevel level) {
-    char* errorBuffer;
-    ts3Functions.getErrorMessage(errorCode, &errorBuffer);
-    const auto output = message + " : " + std::string(errorBuffer);
-    ts3Functions.freeMemory(errorBuffer);
+    char* errorBuffer = nullptr;
+    std::string output;
+    if (ts3Functions.getErrorMessage(errorCode, &errorBuffer) == ERROR_ok && errorBuffer) {
+        output = message + " : " + std::string(errorBuffer);
+        ts3Functions.freeMemory(errorBuffer);
+    } else {
+        output = message + " : error " + std::to_string(errorCode);
+    }
     Logger::log(LoggerTypes::teamspeakClientlog, output, level);//Default loglevel is Info
 }
 
@@ -546,7 +630,8 @@ TSClientID Teamspeak::getMyId(TSServerID serverConnectionHandlerID) {
 }
 
 bool Teamspeak::isInChannel(TSServerID serverConnectionHandlerID, TSClientID clientId, const std::string& channelToCheck) {
-    auto currentChannelID = getChannelOfClient(serverConnectionHandlerID, clientId);
+    const auto currentChannelID = getChannelOfClient(serverConnectionHandlerID, clientId);
+    if (!currentChannelID) return false; //Unknown, would else match the "not found" result of findChannelByName
     if (helpers::startsWith("ID:", channelToCheck))
         return currentChannelID.baseType() == helpers::parseArmaNumberToInt(channelToCheck.substr(3));
 
@@ -569,10 +654,11 @@ std::string Teamspeak::getChannelName(TSServerID serverConnectionHandlerID, TSCl
 }
 
 dataType::TSChannelID Teamspeak::getChannelOfClient(TSServerID serverConnectionHandlerID, TSClientID clientId) {
-    uint64 channelId;
+    uint64 channelId = 0;
     DWORD error;
     if ((error = ts3Functions.getChannelOfClient(serverConnectionHandlerID.baseType(), clientId.baseType(), &channelId)) != ERROR_ok) {
         log("Can't get current channel", error);
+        return TSChannelID(); //invalid
     }
     return channelId;
 }
@@ -661,41 +747,51 @@ std::string Teamspeak::getMetaData(TSServerID serverConnectionHandlerID, TSClien
         log("Can't get client metadata", error);
         return "";
     } else {
-        std::string sharedMsg(clientInfo);
-        if (sharedMsg.find(START_DATA) == std::string::npos || sharedMsg.find(END_DATA) == std::string::npos) {
+        const std::string sharedMsg(clientInfo);
+        ts3Functions.freeMemory(clientInfo);
+        const auto start = sharedMsg.find(START_DATA);
+        //End tag after the start tag, an earlier one would give a negative length
+        const auto end = (start == std::string::npos) ? std::string::npos : sharedMsg.find(END_DATA, start + strlen(START_DATA));
+        if (end == std::string::npos) {
             result = "";
         } else {
-            result = sharedMsg.substr(sharedMsg.find(START_DATA) + strlen(START_DATA), sharedMsg.find(END_DATA) - sharedMsg.find(START_DATA) - strlen(START_DATA));
+            result = sharedMsg.substr(start + strlen(START_DATA), end - start - strlen(START_DATA));
         }
-        ts3Functions.freeMemory(clientInfo);
         return result;
     }
 }
 
 void Teamspeak::setMyMetaData(const std::string & metaData) {
+    const auto serverConnectionHandlerID = getCurrentServerConnection();
     char* clientInfo;
     DWORD error;
-    if ((error = ts3Functions.getClientVariableAsString(getCurrentServerConnection().baseType(), getMyId(ts3Functions.getCurrentServerConnectionHandlerID()).baseType(), CLIENT_META_DATA, &clientInfo)) != ERROR_ok) {
+    if ((error = ts3Functions.getClientVariableAsString(serverConnectionHandlerID.baseType(), getMyId(serverConnectionHandlerID).baseType(), CLIENT_META_DATA, &clientInfo)) != ERROR_ok) {
         log("setMetaData - Can't get client metadata", error);
-    } else {
-        std::string toSet;
-        std::string sharedMsg = clientInfo;
-        if (sharedMsg.find(START_DATA) == std::string::npos || sharedMsg.find(END_DATA) == std::string::npos) {
-            toSet = sharedMsg + START_DATA + metaData + END_DATA;
-        } else {//Only set stuff between TFAR tags
-            const auto before = sharedMsg.substr(0, sharedMsg.find(START_DATA));
-            const auto after = sharedMsg.substr(sharedMsg.find(END_DATA) + strlen(END_DATA), std::string::npos);
-            if (metaData.empty())
-                toSet = before + after;
-            else
-                toSet = before + START_DATA + metaData + END_DATA + after;
-        }
-        if ((error = ts3Functions.setClientSelfVariableAsString(ts3Functions.getCurrentServerConnectionHandlerID(), CLIENT_META_DATA, toSet.c_str())) != ERROR_ok) {
-            log("setMetaData - Can't set own META_DATA", error);
-        }
-        ts3Functions.freeMemory(clientInfo);
+        return; //Nothing was set, nothing to flush
     }
-    ts3Functions.flushClientSelfUpdates(ts3Functions.getCurrentServerConnectionHandlerID(), nullptr);
+    std::string toSet;
+    const std::string sharedMsg = clientInfo;
+    ts3Functions.freeMemory(clientInfo);
+    const auto start = sharedMsg.find(START_DATA);
+    const auto end = (start == std::string::npos) ? std::string::npos : sharedMsg.find(END_DATA, start + strlen(START_DATA));
+    if (end == std::string::npos) {
+        toSet = sharedMsg + START_DATA + metaData + END_DATA;
+    } else {//Only set stuff between TFAR tags
+        const auto before = sharedMsg.substr(0, start);
+        const auto after = sharedMsg.substr(end + strlen(END_DATA), std::string::npos);
+        if (metaData.empty())
+            toSet = before + after;
+        else
+            toSet = before + START_DATA + metaData + END_DATA + after;
+    }
+    //Called every few seconds: only send it to the server when it actually changed
+    if (toSet == sharedMsg)
+        return;
+    if ((error = ts3Functions.setClientSelfVariableAsString(serverConnectionHandlerID.baseType(), CLIENT_META_DATA, toSet.c_str())) != ERROR_ok) {
+        log("setMetaData - Can't set own META_DATA", error);
+        return;
+    }
+    ts3Functions.flushClientSelfUpdates(serverConnectionHandlerID.baseType(), nullptr);
 }
 
 std::string Teamspeak::getClientNickname(TSServerID serverConnectionHandlerID, TSClientID clientId) {
@@ -755,7 +851,10 @@ int ts3plugin_apiVersion() {
     }
     UINT    len = 0;
     VS_FIXEDFILEINFO*   vsfi = nullptr;
-    VerQueryValue(versionInfo, L"\\", reinterpret_cast<void**>(&vsfi), &len);
+    if (!VerQueryValue(versionInfo, L"\\", reinterpret_cast<void**>(&vsfi), &len) || !vsfi || len < sizeof(VS_FIXEDFILEINFO)) {
+        delete[] versionInfo;
+        return PLUGIN_API_VERSION;
+    }
 
     const short major = HIWORD(vsfi->dwFileVersionMS);
     const short minor = LOWORD(vsfi->dwFileVersionMS);
@@ -885,7 +984,7 @@ int ts3plugin_processCommand(uint64 serverConnectionHandlerID, const char* comma
         ts3Functions.printMessageToCurrentTab(diag.str().c_str());
         return 0; /* Plugin handled command */
     }
-    if (TFAR::config.get<bool>(Setting::allowDebugging) && std::string(command,4) == "full") {
+    if (TFAR::config.get<bool>(Setting::allowDebugging) && std::string_view(command).substr(0, 4) == "full"sv) { //Prefix, may be shorter than 4
         std::stringstream date;
         const auto now = std::chrono::system_clock::now();
         const auto in_time_t = std::chrono::system_clock::to_time_t(now);
@@ -931,9 +1030,9 @@ int ts3plugin_processCommand(uint64 serverConnectionHandlerID, const char* comma
         fsd << command << "\n" << diag.str() ;
 
         std::stringstream pos;
-        TFAR::getInstance().doTypeDiagReport("pos", diag);
+        TFAR::getInstance().doTypeDiagReport("pos", pos);
         std::ofstream fsp(basePath + "pos.log");
-        fsp << command << "\n" << diag.str();
+        fsp << command << "\n" << pos.str();
 
 
         ts3Functions.printMessageToCurrentTab((std::string("TFAR: logged to ")+ basePath).c_str());
@@ -965,12 +1064,8 @@ void ts3plugin_currentServerConnectionChanged(uint64 serverConnectionHandlerID) 
 
 /* Static title shown in the left column in the info frame */
 const char* ts3plugin_infoTitle() {
-    auto info = std::string("Task Force Radio Status");
-    const size_t maxLen = info.length() + 1;
-    const auto result = static_cast<char*>(malloc(maxLen * sizeof(char)));
-    memset(result, 0, maxLen);
-    strncpy_s(result, maxLen, info.c_str(), info.length());
-    return result;
+    //Static string: the client never frees the title (ts3plugin_freeMemory is only for infoData/initMenus), a malloc leaked per call
+    return "Task Force Radio Status";
 }
 
 /* Required to release the memory for parameter "data" allocated in ts3plugin_infoData and ts3plugin_initMenus */
@@ -1046,26 +1141,27 @@ void ts3plugin_onClientBanFromServerEvent(uint64 serverConnectionHandlerID, anyI
 
 void ts3plugin_onNewChannelEvent(uint64 serverConnectionHandlerID, uint64 channelID, uint64 channelParentID) {
     Logger::log(LoggerTypes::pluginCommands, "ts3plugin_onNewChannelEvent", LogLevel::LogLevel_DEBUG);
+    //While connecting, the full rebuild at STATUS_CONNECTION_ESTABLISHED covers all channels
     if (connectState != STATUS_CONNECTION_ESTABLISHING)
-        Teamspeak::_updateChanneNameCache(serverConnectionHandlerID);
+        Teamspeak::_updateChannelName(serverConnectionHandlerID, channelID);
 }
 
 void ts3plugin_onNewChannelCreatedEvent(uint64 serverConnectionHandlerID, uint64 channelID, uint64 channelParentID, anyID invokerID, const char* invokerName, const char* invokerUniqueIdentifier) {
     Logger::log(LoggerTypes::pluginCommands, "ts3plugin_onNewChannelCreatedEvent", LogLevel::LogLevel_DEBUG);
-    Teamspeak::_updateChanneNameCache(serverConnectionHandlerID);
+    Teamspeak::_updateChannelName(serverConnectionHandlerID, channelID);
 }
 
 void ts3plugin_onDelChannelEvent(uint64 serverConnectionHandlerID, uint64 channelID, anyID invokerID, const char* invokerName, const char* invokerUniqueIdentifier) {
     Logger::log(LoggerTypes::pluginCommands, "ts3plugin_onDelChannelEvent", LogLevel::LogLevel_DEBUG);
-    Teamspeak::_updateChanneNameCache(serverConnectionHandlerID);
+    Teamspeak::_removeChannelName(serverConnectionHandlerID, channelID);
 }
 
 void ts3plugin_onUpdateChannelEvent(uint64 serverConnectionHandlerID, uint64 channelID) {
     Logger::log(LoggerTypes::pluginCommands, "ts3plugin_onUpdateChannelEvent", LogLevel::LogLevel_DEBUG);
-    Teamspeak::_updateChanneNameCache(serverConnectionHandlerID);
+    Teamspeak::_updateChannelName(serverConnectionHandlerID, channelID);
 }
 
 void ts3plugin_onUpdateChannelEditedEvent(uint64 serverConnectionHandlerID, uint64 channelID, anyID invokerID, const char* invokerName, const char* invokerUniqueIdentifier) {
     Logger::log(LoggerTypes::pluginCommands, "ts3plugin_onUpdateChannelEditedEvent", LogLevel::LogLevel_DEBUG);
-    Teamspeak::_updateChanneNameCache(serverConnectionHandlerID);
+    Teamspeak::_updateChannelName(serverConnectionHandlerID, channelID);
 }
