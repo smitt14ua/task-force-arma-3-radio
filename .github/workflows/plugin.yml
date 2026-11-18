@@ -1,0 +1,95 @@
+name: TeamSpeak plugin
+
+on:
+  push:
+    branches:
+      - '**'
+    # Ignored for tag pushes
+    paths:
+      - 'ts/**'
+      - '.gitmodules'
+      - '.github/workflows/plugin.yml'
+    tags:
+      - '*'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Release + its tag push share github.ref: one run cancelled
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the source code
+        uses: actions/checkout@v7
+      # Not via checkout: shallow fetch, freetype server won't serve pinned commit.
+      # tools/cba not needed
+      - name: Fetch the plugin submodules
+        run: git submodule update --init ts/include/glm ts/include/glfw ts/include/freetype ts/include/tracy
+      # *.lib in LFS, checkout skips it
+      - name: Fetch the prebuilt libraries
+        run: git lfs pull --include "ts/lib/x64/*"
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v3
+      # Project targets Win 8.1 SDK, absent on runner
+      - name: Build the plugin
+        run: >
+          msbuild ts/src/task_force_radio_plugin.vcxproj
+          -nologo -m -v:minimal
+          -p:Configuration=Release
+          -p:Platform=x64
+          -p:WindowsTargetPlatformVersion=10.0
+      - name: Package the plugin
+        id: package
+        run: |
+          $version = (Select-String -Path ts/src/version.h -Pattern '#define PLUGIN_VERSION "(.+)"').Matches[0].Groups[1].Value
+          $sha = '${{ github.sha }}'.Substring(0, 7)
+
+          New-Item -ItemType Directory -Force package/plugins, symbols | Out-Null
+          Copy-Item ts/src/build/TFAR_win64.dll package/plugins/
+          Copy-Item -Recurse ts/radio-sounds package/plugins/radio-sounds
+          Copy-Item ts/src/build/TFAR_win64.pdb symbols/
+          @(
+            'Name = Task Force Arrowhead Radio'
+            'Type = Plugin'
+            'Author = Task Force Arrowhead Radio Team'
+            "Version = $version"
+            'Platforms = win64'
+            "Description = Radio communication for Arma 3 (build $sha)"
+          ) | Set-Content package/package.ini
+
+          $file = "TFAR-$version-$sha.ts3_plugin"
+          Push-Location package
+          7z a -tzip "../$file" package.ini plugins
+          Pop-Location
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "file=$file" >> $env:GITHUB_OUTPUT
+      - name: Upload the plugin
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.package.outputs.file }}
+          archive: false
+      - name: Upload the plugin symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: tfar-plugin-symbols-${{ github.sha }}
+          path: symbols/
+      # Tag without release: artifacts only
+      - name: Attach the plugin to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view $env:TAG > $null
+          if ($LASTEXITCODE) {
+            "::notice::No release for tag $env:TAG, upload skipped"
+            exit 0
+          }
+          gh release upload $env:TAG '${{ steps.package.outputs.file }}' --clobber
