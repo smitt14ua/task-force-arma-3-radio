@@ -22,21 +22,21 @@ void helpers::applyILD(SampleBuffer& samples, Direction3D direction, AngleRadian
     }
 }
 #define _SPEAKER_POSITIONS_
+#include <mutex>
 #include <X3daudio.h>
 #pragma comment(lib, "x3daudio.lib")
 X3DAUDIO_HANDLE x3d_handle;
-bool x3d_initialized = false;
+std::once_flag x3d_initialized; //capture and playback threads can get here at the same time
 
 void helpers::applyILD(SampleBuffer& samples, Position3D myPosition, Direction3D myViewDirection, Position3D emitterPosition, Direction3D emitterViewDirection, bool shouldPlayerHear, int emitterVoiceVolume) {
     ProfileFunction;
-    if (!x3d_initialized) {
+    std::call_once(x3d_initialized, [] {
         X3DAudioInitialize(
             SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT,
             X3DAUDIO_SPEED_OF_SOUND,
             x3d_handle
         );
-        x3d_initialized = true;
-    }
+    });
     auto channels = samples.getChannels();
 
 
@@ -389,6 +389,34 @@ namespace {
         //Doesn't return into the (possibly unloaded) module
         FreeLibraryAndExitThread(module, 0);
     }
+}
+
+void helpers::showMessageBoxDetached(std::string_view text, std::string_view caption, unsigned int style) {
+    using MessageBoxIndirectFn = int (WINAPI*)(const MSGBOXPARAMSA*);
+    static const auto messageBoxIndirect = reinterpret_cast<MessageBoxIndirectFn>(
+        GetProcAddress(GetModuleHandleW(L"user32.dll"), "MessageBoxIndirectA"));
+    if (!messageBoxIndirect) return;
+    //One heap block holding the parameters and both strings. It is intentionally never freed: the thread runs only
+    //user32 code and can't free it, and a few bytes per (rare) message box don't matter.
+    const size_t size = sizeof(MSGBOXPARAMSA) + text.size() + 1 + caption.size() + 1;
+    auto* block = static_cast<char*>(HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size));
+    if (!block) return;
+    auto* params = reinterpret_cast<MSGBOXPARAMSA*>(block);
+    char* textCopy = block + sizeof(MSGBOXPARAMSA);
+    char* captionCopy = textCopy + text.size() + 1;
+    memcpy(textCopy, text.data(), text.size());
+    memcpy(captionCopy, caption.data(), caption.size());
+    params->cbSize = sizeof(MSGBOXPARAMSA);
+    params->lpszText = textCopy;
+    params->lpszCaption = captionCopy;
+    params->dwStyle = style;
+    //MessageBoxIndirectA has the thread start routine's calling convention: WINAPI, one pointer argument
+    const HANDLE thread = CreateThread(nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(messageBoxIndirect), params, 0, nullptr);
+    if (!thread) {
+        HeapFree(GetProcessHeap(), 0, block);
+        return;
+    }
+    CloseHandle(thread);
 }
 
 void helpers::runDetached(std::function<void()> function) {

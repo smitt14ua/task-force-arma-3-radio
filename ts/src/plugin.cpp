@@ -178,6 +178,10 @@ void PipeThread() {
         pipeConnected = false;
         updateUserStatusInfo(true);
         TFAR::getInstance().onGameDisconnected();
+        //Towers belong to the mission: drop them when it ended. After a timeout (pause, alt-tab) keep them, the mod
+        //only re-sends them if the config refresh reaches it, which a SETCFG during reconnect can prevent.
+        if (pipeHandler.disconnectWasMissionEnd)
+            TFAR::getAntennaManager()->clearAntennas();
     });
 
     pipeHandler.onConnected.connect(

@@ -338,10 +338,9 @@ bool Teamspeak::setMyNicknameToGameName(TSServerID serverConnectionHandlerID, co
     static auto shortNameNotify = false;
     if (nickname.length() < 3 && !shortNameNotify) {//Minimum name length for Teamspeak
         shortNameNotify = true;
-        helpers::runDetached([length = nickname.length()]() { //Create thread because MessageBox is blocking
-            auto message = "Your in-game name is too short(" + std::to_string(length) + " characters).\nIt needs to be atleast 3 characters long.\nThis is a Teamspeak limitation, TFAR will not work properly until you change your ingame name.";
-            MessageBoxA(nullptr, message.c_str(), "Task Force Arrowhead Radio", MB_ICONERROR);
-        });
+        //MessageBox is blocking, show it from its own thread
+        const auto message = "Your in-game name is too short(" + std::to_string(nickname.length()) + " characters).\nIt needs to be atleast 3 characters long.\nThis is a Teamspeak limitation, TFAR will not work properly until you change your ingame name.";
+        helpers::showMessageBoxDetached(message, "Task Force Arrowhead Radio", MB_ICONERROR);
         return false;
     }
 

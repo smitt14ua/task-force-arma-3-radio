@@ -6,6 +6,7 @@
 #include <atomic>
 #include <optional>
 #include <condition_variable>
+#include <functional>
 
 struct unitPositionPacket;
 class clientData;
@@ -39,6 +40,10 @@ public:
     std::string processCommand(const std::string& command);
 
     static gameCommand toGameCommand(std::string_view textCommand, size_t tokenCount);
+    //Game ended (mission end, game crash/timeout, shutdown) while we may be transmitting: send the RELEASED and reset
+    //the local tangent state on the command thread. Waits (shortly) until done, so it happens before the nickname
+    //is restored and other clients can still find us. Must not be called from the command thread.
+    void releaseTransmissionOnGameEnd();
 
     static inline std::atomic_bool vadEnabled = false;
 private:
@@ -63,7 +68,10 @@ private:
     };
     void processTangent(const std::vector<std::string_view>& tokens, const std::string& command, TSServerID serverConnection);
     void releaseAllTangents(std::string_view nickname, TSServerID serverConnection);
+    //Ends the current transmission (pending or held) with its RELEASED broadcast and resets the local tangent state
+    void releaseCurrentTransmission(TSServerID serverConnection);
     void sendPendingTangentRelease(bool restoreVad);
+    static void playTangentSound(TSServerID serverConnection, std::string_view frequency, std::string_view subtype, bool pressed);
     static std::string tangentBroadcast(std::string_view command, const clientData& myClientData);
     std::optional<PendingTangentRelease> pendingTangentRelease;
     bool voiceForcedByTangent = false; //We disabled VAD and forced voice on (transmitting or release pending)
@@ -75,6 +83,7 @@ private:
 
 
     std::queue<std::string> commandQueue;
+    std::queue<std::function<void()>> taskQueue; //Internal work that has to run on the command thread
     std::unique_ptr<std::thread> myThread;
     std::condition_variable threadWorkCondition;
     std::mutex theadMutex;

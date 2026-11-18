@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <string_view>
 #include <set>
+#include <future>
 
 using namespace std::literals::string_view_literals;
 
@@ -48,6 +49,23 @@ void CommandProcessor::stopThread() {
     if (myThread->joinable()) //This happened once.. When something else crashed and dllDetach was called unexpectedly
         myThread->join();
     myThread = nullptr;
+}
+
+void CommandProcessor::releaseTransmissionOnGameEnd() {
+    if (!myThread || !threadRunning || std::this_thread::get_id() == myThread->get_id())
+        return; //No command thread, so no transmission was started either
+    auto done = std::make_shared<std::promise<void>>();
+    auto finished = done->get_future();
+    {
+        std::lock_guard<std::mutex> lock(theadMutex);
+        taskQueue.emplace([this, done]() {
+            if (pendingTangentRelease || TFAR::getInstance().m_gameData.tangentPressed)
+                releaseCurrentTransmission(pendingTangentRelease ? pendingTangentRelease->serverConnection : Teamspeak::getCurrentServerConnection());
+            done->set_value();
+        });
+    }
+    threadWorkCondition.notify_one();
+    finished.wait_for(std::chrono::milliseconds(500)); //Don't hang the caller if the command thread is stuck
 }
 
 void CommandProcessor::queueCommand(const std::string& command) {
@@ -233,13 +251,21 @@ void CommandProcessor::threadRun() {
     };
     while (shouldRun) {
         std::unique_lock<std::mutex> lock(theadMutex);
-        const auto hasWork = [this] {return !commandQueue.empty() || !shouldRun; };
+        const auto hasWork = [this] {return !commandQueue.empty() || !taskQueue.empty() || !shouldRun; };
         //A delayed tangent release is due at its deadline, handled here instead of by a detached thread
         if (pendingTangentRelease)
             threadWorkCondition.wait_until(lock, pendingTangentRelease->deadline, hasWork);
         else
             threadWorkCondition.wait(lock, hasWork);
         if (!shouldRun) break;
+        if (!taskQueue.empty()) { //Internal work first, it was requested after the queued commands' effects
+            auto task = std::move(taskQueue.front());
+            taskQueue.pop();
+            lock.unlock();
+            sendDueTangentRelease();
+            runGuarded("internal task", task);
+            continue;
+        }
         if (commandQueue.empty()) { //release deadline reached
             lock.unlock();
             sendDueTangentRelease();
@@ -358,14 +384,12 @@ void CommandProcessor::processAsynchronousCommand(const std::string& command) {
                 msg += " (You probably need to update your TFAR Teamspeak plugin)"sv;
 
                 Logger::log(LoggerTypes::teamspeakClientlog, msg, LogLevel_WARNING);
-                //Show it from its own thread so game messages keep being processed while the box is open, once per text.
-                //The texts are never erased, so the thread only reads a stable pointer and touches nothing after the box returns.
+                //Show it without blocking, so game messages keep being processed while the box is open. Once per text.
                 static std::mutex shownMutex;
                 static std::set<std::string, std::less<>> shownMessages;
                 std::lock_guard<std::mutex> shownLock(shownMutex);
                 if (const auto [it, inserted] = shownMessages.insert(std::move(msg)); inserted) {
-                    const char* text = it->c_str();
-                    helpers::runDetached([text]() { MessageBoxA(0, text, "Task Force Radio", MB_OK); });
+                    helpers::showMessageBoxDetached(*it, "Task Force Radio", MB_OK);
                 }
                 return;
             }
@@ -487,8 +511,6 @@ void CommandProcessor::processTangent(const std::vector<std::string_view>& token
 
     myClientData->setCurrentTransmittingSubtype(subtypeString);
 
-    const float globalVolume = TFAR::getInstance().m_gameData.globalVolume;//used for playing radio sounds
-
     if (pressed) {
         myClientData->range = helpers::parseArmaNumberToInt(tokens[3]); //range needs to be set to indicate that we are transmitting
         if (myClientData->currentTransmittingTangentOverType == sendingRadioType::LISTEN_TO_NONE)
@@ -504,24 +526,7 @@ void CommandProcessor::processTangent(const std::vector<std::string_view>& token
 
 
     auto commandToBroadcast = tangentBroadcast(command, *myClientData);
-    auto frequency = tokens[2];
-    //convenience function to remove duplicate code
-    const auto playRadioSound = [currentServerConnectionHandlerID, globalVolume, &frequency](SoundFile& file,
-        const std::map<std::string, FREQ_SETTINGS, std::less<>>& frequencyMap) {
-        auto found = frequencyMap.find(frequency);
-        if (found != frequencyMap.end()) {
-            const auto& freq = found->second;
-            TFAR::getPlaybackHandler()->playWavFile(currentServerConnectionHandlerID, file, helpers::volumeMultiplifier(static_cast<float>(freq.volume)) * globalVolume, freq.stereoMode);
-        } else {
-            TFAR::getPlaybackHandler()->playWavFile(file);
-        }
-    };
-
-    auto soundToPlay = SoundDirectory::getRadioSound(subtype, pressed);
-    LockGuard_shared frequencyLock(TFAR::getInstance().m_gameData.m_lock);
-    if (!soundToPlay.isEmpty())
-        playRadioSound(soundToPlay, subtype == PTTDelayArguments::subtypes::digital ? TFAR::getInstance().m_gameData.mySwFrequencies : TFAR::getInstance().m_gameData.myLrFrequencies);
-    frequencyLock.unlock(); //setCurTransRadio acquires lock. This can deadlock if we don't unlock here
+    playTangentSound(currentServerConnectionHandlerID, tokens[2], subtypeString, pressed);
 
     if (!pressed) {
         if (!TFAR::config.get<bool>(Setting::full_duplex)) {
@@ -574,8 +579,32 @@ void CommandProcessor::sendPendingTangentRelease(bool restoreVad) {
     disableVoiceAndSendCommand(release.commandToBroadcast, release.serverConnection, false);
 }
 
+void CommandProcessor::playTangentSound(TSServerID serverConnection, std::string_view frequency, std::string_view subtypeString, bool pressed) {
+    const auto subtype = PTTDelayArguments::stringToSubtype(subtypeString);
+    auto soundToPlay = SoundDirectory::getRadioSound(subtype, pressed);
+    if (soundToPlay.isEmpty()) return;
+    const float globalVolume = TFAR::getInstance().m_gameData.globalVolume;
+    //Only hold the lock for the lookup: playing may need other locks
+    std::optional<FREQ_SETTINGS> settings;
+    {
+        LockGuard_shared frequencyLock(TFAR::getInstance().m_gameData.m_lock);
+        const auto& frequencyMap = subtype == PTTDelayArguments::subtypes::digital ? TFAR::getInstance().m_gameData.mySwFrequencies : TFAR::getInstance().m_gameData.myLrFrequencies;
+        if (const auto found = frequencyMap.find(frequency); found != frequencyMap.end())
+            settings = found->second;
+    }
+    if (settings)
+        TFAR::getPlaybackHandler()->playWavFile(serverConnection, soundToPlay, helpers::volumeMultiplifier(static_cast<float>(settings->volume)) * globalVolume, settings->stereoMode);
+    else
+        TFAR::getPlaybackHandler()->playWavFile(soundToPlay);
+}
+
 void CommandProcessor::releaseAllTangents(std::string_view nickname, TSServerID currentServerConnectionHandlerID) {
     //Need to release tangent in case it's currently pressed else player will hotmic. Happens right away.
+    releaseCurrentTransmission(currentServerConnectionHandlerID);
+    disableVoiceAndSendCommand(std::string("RELEASE_ALL_TANGENTS\t").append(nickname), currentServerConnectionHandlerID, false);
+}
+
+void CommandProcessor::releaseCurrentTransmission(TSServerID currentServerConnectionHandlerID) {
     //Clients with an older plugin only stop "receiving" us on a RELEASED, so the current transmission gets its
     //RELEASED first: a pending one, or (still held) the one the mod's own release would send. The old plugin sent
     //that RELEASED too, after the mod's release; the mod's later RELEASED is now dropped as unchanged instead.
@@ -592,6 +621,8 @@ void CommandProcessor::releaseAllTangents(std::string_view nickname, TSServerID 
             std::string releasedCommand(pressedTokens[0]);
             releasedCommand.append("\tRELEASED\t").append(pressedTokens[2]).append("\t").append(pressedTokens[3]).append("\t").append(pressedTokens[4]);
             Teamspeak::sendPluginCommand(currentServerConnectionHandlerID, TFAR::getInstance().getPluginID(), tangentBroadcast(releasedCommand, *myClientData), PluginCommandTarget_CURRENT_CHANNEL);
+            //The mod's own RELEASED (and its sound) is dropped as unchanged now, play the release sound here
+            playTangentSound(currentServerConnectionHandlerID, pressedTokens[2], pressedTokens[4], false);
         }
     }
     if (voiceForcedByTangent) {
@@ -615,8 +646,6 @@ void CommandProcessor::releaseAllTangents(std::string_view nickname, TSServerID 
             myClientData->currentTransmittingTangentOverType = sendingRadioType::LISTEN_TO_NONE;
         }
     }
-
-    disableVoiceAndSendCommand(std::string("RELEASE_ALL_TANGENTS\t").append(nickname), currentServerConnectionHandlerID, false);
 }
 
 void CommandProcessor::processSpeakers(std::vector<std::string_view>& tokens) const {

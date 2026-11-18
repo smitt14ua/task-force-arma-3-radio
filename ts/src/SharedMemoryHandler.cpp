@@ -189,8 +189,11 @@ bool SharedMemoryHandler::hasRequests() {
 
 //The extension waits PIPE_TIMEOUT (1000 ms, extensions/task_force_radio_pipe/stdafx.h) for a sync answer and then gives up
 //without clearing the answer event. An answer written after that would be read as the answer of the NEXT sync call,
-//shifting all following replies. Only drop answers that are certainly too late (margin for timer resolution).
+//shifting all following replies.
 static constexpr auto extensionSyncTimeout = 1000ms;
+//syncRequestTime is never later than the start of the extension's wait, so the real wait is at most `age`. The wait can
+//end a timer tick early, and a late answer shifts every following reply while a dropped one only loses this reply:
+//drop a little before the timeout.
 static constexpr auto staleAnswerMargin = 50ms;
 
 bool SharedMemoryHandler::answerSyncRequest(const std::string& answer) {
@@ -198,7 +201,7 @@ bool SharedMemoryHandler::answerSyncRequest(const std::string& answer) {
     if (syncRequestPending) {
         syncRequestPending = false;
         const auto age = std::chrono::system_clock::now() - syncRequestTime;
-        if (age > extensionSyncTimeout + staleAnswerMargin) {
+        if (age > extensionSyncTimeout - staleAnswerMargin) {
             Logger::log(LoggerTypes::teamspeakClientlog, "SHAMEM dropped sync answer, the game stopped waiting "
                 + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(age).count()) + "ms after the request", LogLevel_WARNING);
             return false;
@@ -266,6 +269,7 @@ bool SharedMemoryHandler::isConnected() {
     if ((std::chrono::system_clock::now() - lastConnectedEvent) < 500ms)
         return isCurrentlyConnected;
     if (wasConnected && !isCurrentlyConnected) {
+        disconnectWasMissionEnd = lastGameTick.time_since_epoch().count() == 0;
         onDisconnected();
         lastConnectedEvent = std::chrono::system_clock::now();
     } else if (!wasConnected && isCurrentlyConnected) {

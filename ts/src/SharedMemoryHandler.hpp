@@ -115,6 +115,9 @@ public:
     void setGameDisconnected();
     Signal<void()> onConnected;
     Signal<void()> onDisconnected;
+    //Set before onDisconnected fires: true if the game ended the mission (the extension zeroes lastGameTick on
+    //MISSIONEND), false for a timeout (game paused, alt-tabbed, frozen or crashed)
+    bool disconnectWasMissionEnd = false;
 
 private:
     bool createMemRegion();

@@ -35,13 +35,17 @@ PlaybackHandler::PlaybackHandler() {
         diag << "PH:\n";
         std::array<std::string_view, 4> typeToString{ "base"sv, "stereo"sv, "raw"sv, "processing"sv };
 
-        for (auto& it : playbacks) {
-            diag << TS_INDENT << "PB: " << it.first << ":\n";
-            diag << TS_INDENT << TS_INDENT << "Type: " << typeToString[static_cast<uint8_t>(it.second->type())] << "\n";
-            diag << TS_INDENT << TS_INDENT << "samplesReady: " << it.second->samplesReady() << "\n";
-            diag << TS_INDENT << TS_INDENT << "isDone: " << it.second->isDone() << "\n";
+        {
+            LockGuard_exclusive lock(playbackCriticalSection);
+            for (auto& it : playbacks) {
+                diag << TS_INDENT << "PB: " << it.first << ":\n";
+                diag << TS_INDENT << TS_INDENT << "Type: " << typeToString[static_cast<uint8_t>(it.second->type())] << "\n";
+                diag << TS_INDENT << TS_INDENT << "samplesReady: " << it.second->samplesReady() << "\n";
+                diag << TS_INDENT << TS_INDENT << "isDone: " << it.second->isDone() << "\n";
+            }
         }
 
+        LockGuard_exclusive lock(wavCacheLock);
         for (auto& it : wavCache) {
             diag << TS_INDENT << "WC: " << it.first << ":\n";
         }
@@ -301,16 +305,20 @@ std::shared_ptr<clunk::WavFile> PlaybackHandler::getWavFileFromPath(const std::s
         std::fopen(p.c_str(), "rb")
 #endif
         ) {
+        //WavFile owns f and closes it in its destructor, never fclose it here
         std::shared_ptr<clunk::WavFile> wav = std::make_shared<clunk::WavFile>(f);
-        wav->read();
-        if (wav->ok() && wav->_spec.channels == 2 && wav->_spec.sample_rate == 48000) {
-            wavCache[filePath] = wav;
-        } else {
-            fclose(f); //was leaked on this path
+        try {
+            wav->read();
+        } catch (const std::exception&) {//truncated or broken file
             Logger::log(LoggerTypes::teamspeakClientlog, "Cannot read Soundfile: " + filePath, LogLevel::LogLevel_ERROR);
             return {};
         }
-        fclose(f);
+        if (wav->ok() && wav->_spec.channels == 2 && wav->_spec.sample_rate == 48000) {
+            wavCache[filePath] = wav;
+        } else {
+            Logger::log(LoggerTypes::teamspeakClientlog, "Cannot read Soundfile: " + filePath, LogLevel::LogLevel_ERROR);
+            return {};
+        }
         return wav;
     }
 
@@ -328,17 +336,21 @@ void playbackWavStereo::construct(clunk::WavFile* wavFile, stereoMode stereo, fl
 
 void playbackWavStereo::construct(std::string wavFilePath, stereoMode stereo, float gain) {
     if (FILE *f = fopen(wavFilePath.c_str(), "rb")) {
-        auto wav = new clunk::WavFile(f);
-        wav->read();
-        if (!wav->ok() || wav->_spec.channels != 2 || wav->_spec.sample_rate != 48000 || wav->_spec.format != clunk::AudioSpec::S16) {
+        //WavFile owns f and closes it in its destructor
+        auto wav = std::make_unique<clunk::WavFile>(f);
+        bool readOk = true;
+        try {
+            wav->read();
+        } catch (const std::exception&) {
+            readOk = false;
+        }
+        if (!readOk || !wav->ok() || wav->_spec.channels != 2 || wav->_spec.sample_rate != 48000 || wav->_spec.format != clunk::AudioSpec::S16) {
             char buffer[MAX_PATH + const_strlen("File %s has invalid format.")];
             _snprintf_s(buffer, MAX_PATH + const_strlen("File %s has invalid format."), _TRUNCATE, "File %s has invalid format.", wavFilePath.c_str());
             MessageBoxA(0, buffer, "Task Force Arrowhead Radio", MB_OK);
         } else {
-            construct(wav, stereo, gain);
+            construct(wav.get(), stereo, gain);
         }
-        fclose(f);
-        delete wav;
     } else {
         log_string("Can't Open file " + wavFilePath, LogLevel_ERROR);
     }

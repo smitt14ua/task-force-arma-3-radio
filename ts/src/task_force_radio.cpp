@@ -47,16 +47,17 @@ TFAR::TFAR() {
         Teamspeak::moveToSeriousChannel();
     });
 
-    onGameEnd.connect([]() {
+    onGameEnd.connect([this]() {
         Logger::log(LoggerTypes::profiler, "On Game End", LogLevel_DEVEL);
+        //Still transmitting (mission end, game crash): others must get our RELEASED while they still know our game name
+        if (m_commandProcessor)
+            m_commandProcessor->releaseTransmissionOnGameEnd();
         TSServerID currentServer = ts3Functions.getCurrentServerConnectionHandlerID();
         Teamspeak::moveFromSeriousChannel(currentServer);
         Teamspeak::resetMyNickname(currentServer);
         Teamspeak::unmuteAll(currentServer); //this may be called twice. If End was caused by PluginDisconnect. But will return immediatly if there are no muted clients
         Teamspeak::setVoiceDisabled(currentServer, !CommandProcessor::vadEnabled); //stop force PTT if we were in a transmission
         if (CommandProcessor::vadEnabled) Teamspeak::hlp_enableVad(); //If voice activation was enabled previously, we want to return it to it's original state
-        //Towers belong to the mission. The mod sends all of them again on the config refresh of the next game.
-        getAntennaManager()->clearAntennas();
     });
 
     onShutdown.connect([this]() {
@@ -367,8 +368,9 @@ void TFAR::trackPiwik(const std::vector<std::string_view>& piwikDataIn) {
 
 void TFAR::createCheckForUpdateThread() {
     helpers::runDetached([]() {
+        //Only the network check keeps the DLL loaded, the box itself runs without plugin code
         if (isUpdateAvailable()) {
-            MessageBoxA(0, "New version of Task Force Arrowhead Radio is available. Check radio.task-force.ru/en", "Task Force Arrowhead Radio Update", MB_OK);
+            helpers::showMessageBoxDetached("New version of Task Force Arrowhead Radio is available. Check radio.task-force.ru/en", "Task Force Arrowhead Radio Update", MB_OK);
         }
     });
 }
