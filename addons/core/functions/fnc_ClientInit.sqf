@@ -4,6 +4,8 @@ disableSerialization;
 
 // Menus
 #include "flexiUI\flexiInit.inc.sqf"
+//The briefing's controls list was built before these keybinds existed
+call TFAR_fnc_updateDiaryControls;
 
 //#API Variables
 DEPRECATE_VARIABLE(tf_give_personal_radio_to_regular_soldier,TFAR_givePersonalRadioToRegularSoldier);

@@ -101,6 +101,7 @@ PREP(activeLrRadio);
 PREP(activeSwRadio);
 PREP(applyFrequencyNamesSetting);
 PREP(addDiaryRecord);
+PREP(updateDiaryControls);
 // B
 PREP(backpackLr);
 // C

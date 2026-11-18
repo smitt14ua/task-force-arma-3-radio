@@ -139,9 +139,11 @@
   `requiredAddons` для рюкзаків Enoch.
   - Поле частоти під час введення лишає лише число: цифри зберігаються, літери видаляються, кома, пробіл та інші
     символи стають крапкою (лише перша крапка). Курсор лишається на місці, а назву каналу фільтр не чіпає.
-- **Брифінг, «Рації → Керування»:** прибрано рядки зі стрілками `[←,↑,→]`. Шрифт щоденника не має цих символів, і
-  вони налазили на сусідній текст. Ці клавіші вже описані словами («CTRL + стрілка вгору/вліво/вправо»), а в
-  італійській і російській, де такого рядка немає, стрілки замінено словами.
+- **Брифінг, «Рації → Керування»:** тепер там видно клавіші, які гравець справді призначив у CBA-налаштуваннях
+  TFAR, а не стандартні. Якщо на дію призначено кілька клавіш, видно всі, а непризначену позначено «-». Описи взято з
+  назв кейбіндів, і список оновлюється щоразу, коли відкривається карта. Також зникли рядки зі стрілками `[←,↑,→]`,
+  які налазили на текст, бо шрифт щоденника не має цих символів. Статичними лишились лише PTT у TeamSpeak і ESC,
+  їхні переклади взято зі старого тексту.
 - **ACE Arsenal:** усю статистику TFAR (дальність SR/LR, код шифрування, «Wireless Intercom Enabled») винесено в окремий `tfar_compat_ace_arsenal.pbo`
   (`requiredAddons` = `ace_arsenal`, `skipWhenMissingDependencies`). Раніше без ACE лишався невизначений
   `statBase`, а з ACE могла зламатись ієрархія класів через порядок завантаження.
@@ -151,7 +153,7 @@
 - Нові функції: `TFAR_fnc_getAdditionalSwVolume`, `TFAR_fnc_getAdditionalLrVolume`,
   `TFAR_fnc_setAdditionalSwVolume`, `TFAR_fnc_setAdditionalLrVolume` (#1584); функції назв частот (#1585);
   `TFAR_fnc_updateSpeakersEnabled`, `TFAR_fnc_startTangentTransmission`, `TFAR_fnc_endTangentTransmission`,
-  `TFAR_fnc_sanitizeFrequencyInput` (внутрішні).
+  `TFAR_fnc_sanitizeFrequencyInput`, `TFAR_fnc_updateDiaryControls` (внутрішні).
 - Видалено: `TFAR_fnc_processCuratorKey`, `TFAR_fnc_getSwDialogFrequencyPosition` (обидві не використовувались).
 - `TFAR_fnc_doSRTransmit` / `TFAR_fnc_doLRTransmit` повертають `true`, якщо передача почалась.
 - `OnSWvolumeSet` / `OnLRvolumeSet` мають 5-й аргумент: чи це додатковий канал (#1584).
