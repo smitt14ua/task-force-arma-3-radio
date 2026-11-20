@@ -24,10 +24,14 @@ _this setRandomLip false;
 //local Killed EH never fired for remote units). On KILLED every plugin re-evaluates the mute state of the whole
 //channel, so sending every death from every client flooded the TeamSpeak server with mute/unmute requests
 //(voices dropped on a 100 player server). Remote deaths reach the plugin anyway: dead players' POS stop.
-if !(_this isEqualTo TFAR_currentUnit) exitWith {};
+//player too: our own body can die while we remote control another unit (TFAR_currentUnit).
+if !(_this isEqualTo TFAR_currentUnit || {_this isEqualTo player}) exitWith {};
 
-//The plugin treats RELEASE_ALL_TANGENTS as a release of its own tangent
-_this call TFAR_fnc_releaseAllTangents;
+//The plugin treats RELEASE_ALL_TANGENTS as a release of its own tangent. Not when only our body died while we
+//remote control another unit, that would cut the controlled unit's transmission.
+if (_this isEqualTo TFAR_currentUnit) then {
+    _this call TFAR_fnc_releaseAllTangents;
+};
 
 //The plugin only knows players, by name. A unit a player remote controls is sent under that player's name, but
 //TFAR_pluginUnitName stays on the unit after control ends: a later death of that AI must not mark the former

@@ -84,6 +84,7 @@ PREP_SUB(plugin,processTangent);
 PREP_SUB(plugin,releaseAllTangents);
 PREP_SUB(plugin,sendFrequencyInfo);
 PREP_SUB(plugin,sendPlayerInfo);
+PREP_SUB(plugin,sendMuteSpectators);
 PREP_SUB(plugin,sendPlayerKilled);
 PREP_SUB(plugin,sendPluginConfig);
 PREP_SUB(plugin,sendSpeakerRadios);

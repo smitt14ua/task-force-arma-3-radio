@@ -191,13 +191,7 @@
     localize ELSTRING(settings,clientside),
     false,
     0,
-    {
-        //Plugins older than this setting show a blocking "invalid config key" box, so only send it once enabled
-        if (_this || {!isNil QGVAR(muteSpectatorsSent)}) then {
-            GVAR(muteSpectatorsSent) = true;
-            ["muteSpectators", _this] call TFAR_fnc_setPluginSetting;
-        };
-    }
+    {[_this] call TFAR_fnc_sendMuteSpectators;} //not to old plugins
 ] call CBA_Settings_fnc_init;
 
 

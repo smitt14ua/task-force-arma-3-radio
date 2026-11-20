@@ -708,23 +708,29 @@ void CommandProcessor::processUnitKilled(std::string &&name, TSServerID serverCo
         return;
 
     const auto killedData = clientDataDir->getClientData(name);
-    if (killedData) {
-        killedData->dataFrame = INVALID_DATA_FRAME;
-    }
-
-    //Someone else died: only his own mute state can change. Re-evaluating the whole channel for every death
-    //(a mod that sends remote deaths too) makes every client send bulk unmutes and then re-mute far players one by
-    //one, flooding the TeamSpeak server on big servers.
-    if (killedData && killedData != clientDataDir->myClientData) {
-        setGameClientMuteStatus(serverConnection, killedData->clientId);
+    //Unknown name (not in our channel, or a script reporting some unit): nobody we know changed state, and the full
+    //channel pass below would bulk-unmute everyone for nothing.
+    if (!killedData)
         return;
-    }
+    killedData->dataFrame = INVALID_DATA_FRAME;
 
     const bool isSeriousMode = isSeriousModeEnabled(serverConnection, Teamspeak::getMyId(serverConnection));
 
     if (clientDataDir->myClientData) {
         if (clientDataDir->myClientData->dataFrame == INVALID_DATA_FRAME)
             TFAR::getInstance().m_gameData.alive = false;
+    }
+
+    //Someone else died: only his own mute state can change, apply what the full pass below gives a dead client.
+    //Re-evaluating the whole channel for every death (a mod that sends remote deaths too) makes every client send
+    //bulk unmutes and then re-mute far players one by one, flooding the TeamSpeak server on big servers.
+    if (killedData != clientDataDir->myClientData) {
+        const bool iAmAlive = TFAR::getInstance().m_gameData.alive;
+        if (!isSeriousMode && !iAmAlive)
+            Teamspeak::setClientMute(serverConnection, killedData->clientId, false);
+        else if (!TFAR::config.get<bool>(Setting::disableAutomaticMute))
+            Teamspeak::setClientMute(serverConnection, killedData->clientId, iAmAlive && isSeriousMode);
+        return;
     }
 
     const auto clientsIds = Teamspeak::getChannelClients(serverConnection, Teamspeak::getChannelOfClient(serverConnection));
