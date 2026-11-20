@@ -261,6 +261,8 @@ void Teamspeak::setClientMute(TSServerID serverConnectionHandlerID, std::vector<
         return serverDataDir->getClientMuteStatus(client) == mute;
     }), clientIds.end());
 
+    if (clientIds.empty()) return; //everyone already in that state, don't send an empty request to the server
+
     for (auto& client : clientIds) {
         serverDataDir->setClientMuteStatus(client, mute);
     }

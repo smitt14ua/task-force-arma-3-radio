@@ -704,14 +704,21 @@ void CommandProcessor::processSpeakers(std::vector<std::string_view>& tokens) co
 void CommandProcessor::processUnitKilled(std::string &&name, TSServerID serverConnection) const {
     ProfileFunction;
     const auto clientDataDir = TFAR::getServerDataDirectory()->getClientDataDirectory(serverConnection);
-    if (clientDataDir) {
-        if (const auto clientData = clientDataDir->getClientData(name); clientData) {
-            clientData->dataFrame = INVALID_DATA_FRAME;
-        }
-    }
-
     if (!clientDataDir)
         return;
+
+    const auto killedData = clientDataDir->getClientData(name);
+    if (killedData) {
+        killedData->dataFrame = INVALID_DATA_FRAME;
+    }
+
+    //Someone else died: only his own mute state can change. Re-evaluating the whole channel for every death
+    //(a mod that sends remote deaths too) makes every client send bulk unmutes and then re-mute far players one by
+    //one, flooding the TeamSpeak server on big servers.
+    if (killedData && killedData != clientDataDir->myClientData) {
+        setGameClientMuteStatus(serverConnection, killedData->clientId);
+        return;
+    }
 
     const bool isSeriousMode = isSeriousModeEnabled(serverConnection, Teamspeak::getMyId(serverConnection));
 
