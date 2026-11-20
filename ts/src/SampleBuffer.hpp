@@ -188,6 +188,10 @@ public:
     uint32_t getSampleCount() const {
         return samples->getSampleCount();
     }
+    //A default constructed buffer has no storage until something is copied into it
+    bool hasStorage() const {
+        return static_cast<bool>(samples);
+    }
     //void setSampleCount(size_t count) const {
     //    return samples->setSampleCount(count);
     //}

@@ -605,7 +605,8 @@ void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID,
                     //Re-filtering the last buffer on every call ran it through the same filter twice.
                     const bool needsSeed = created || filter.get() != clientData->OIFilterInUse;
                     clientData->OIFilterInUse = filter.get();
-                    if (needsSeed && clientData->OISampleBuffer.getSampleCount() != 0) {
+                    //No storage before this client's first direct speech buffer (getSampleCount would dereference null)
+                    if (needsSeed && clientData->OISampleBuffer.hasStorage() && clientData->OISampleBuffer.getSampleCount() != 0) {
                         helpers::processFilterStereo(clientData->OISampleBuffer, 1.0f, filter, false); //pre-seed the filter with last sample
                     }
                     sampleBuffer.copy(clientData->OISampleBuffer);
