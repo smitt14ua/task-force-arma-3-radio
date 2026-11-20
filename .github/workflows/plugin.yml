@@ -38,17 +38,22 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v3
       # Project targets Win 8.1 SDK, absent on runner
+      # AppVeyorBuild = release mode like the official builds: no Tracy profiler (its exception handler
+      # outlives the unloaded DLL and crashes TeamSpeak), plugin command logs on. Build number > mod's
+      # minimumPluginVersion (339). CL takes # instead of = in /D.
       - name: Build the plugin
-        run: >
-          msbuild ts/src/task_force_radio_plugin.vcxproj
-          -nologo -m -v:minimal
-          -p:Configuration=Release
-          -p:Platform=x64
-          -p:WindowsTargetPlatformVersion=10.0
+        id: build
+        run: |
+          $num = 1000 + [int]$env:GITHUB_RUN_NUMBER
+          $version = "1.1.$num"
+          $env:CL = "/DAppVeyorBuild#\`"$version\`" /DAppVeyorBuildNum#$num"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          msbuild ts/src/task_force_radio_plugin.vcxproj -nologo -m -v:minimal -p:Configuration=Release -p:Platform=x64 -p:WindowsTargetPlatformVersion=10.0
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Package the plugin
         id: package
         run: |
-          $version = (Select-String -Path ts/src/version.h -Pattern '#define PLUGIN_VERSION "(.+)"').Matches[0].Groups[1].Value
+          $version = '${{ steps.build.outputs.version }}'
           $sha = '${{ github.sha }}'.Substring(0, 7)
 
           New-Item -ItemType Directory -Force package/plugins, symbols | Out-Null

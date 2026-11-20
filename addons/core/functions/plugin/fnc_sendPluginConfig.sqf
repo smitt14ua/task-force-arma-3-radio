@@ -37,7 +37,13 @@
 ["disableAutomaticMute", missionNamespace getVariable ["TFAR_disableAutoMute", false]] call TFAR_fnc_setPluginSetting;
 ["noAutomoveSpectator", missionNamespace getVariable ["TFAR_noAutomoveSpectator", true]] call TFAR_fnc_setPluginSetting;
 ["allowDebugging", missionNamespace getVariable ["TFAR_allowDebugging", false]] call TFAR_fnc_setPluginSetting;
-["muteSpectators", missionNamespace getVariable ["TFAR_muteSpectators", false]] call TFAR_fnc_setPluginSetting;
+//Plugins older than this setting show a blocking "invalid config key" box (freezing the game), and false is the
+//plugin default anyway, so only send it once it has been enabled
+private _muteSpectators = missionNamespace getVariable ["TFAR_muteSpectators", false];
+if (_muteSpectators || {!isNil QGVAR(muteSpectatorsSent)}) then {
+    GVAR(muteSpectatorsSent) = true;
+    ["muteSpectators", _muteSpectators] call TFAR_fnc_setPluginSetting;
+};
 
 //Setting the channel name moves us into that channel, using the password set at that moment. The plugin takes
 //queued messages newest first, so send the name last and later, once the password has been applied.
