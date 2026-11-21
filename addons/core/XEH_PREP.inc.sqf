@@ -86,6 +86,7 @@ PREP_SUB(plugin,sendFrequencyInfo);
 PREP_SUB(plugin,sendPlayerInfo);
 PREP_SUB(plugin,sendMuteSpectators);
 PREP_SUB(plugin,sendPlayerKilled);
+PREP_SUB(plugin,sendSeriousChannelName);
 PREP_SUB(plugin,sendPluginConfig);
 PREP_SUB(plugin,sendSpeakerRadios);
 PREP_SUB(plugin,sessionTracker);

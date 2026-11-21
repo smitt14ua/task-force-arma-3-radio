@@ -39,10 +39,8 @@
 ["allowDebugging", missionNamespace getVariable ["TFAR_allowDebugging", false]] call TFAR_fnc_setPluginSetting;
 [missionNamespace getVariable ["TFAR_muteSpectators", false]] call TFAR_fnc_sendMuteSpectators; //not to old plugins
 
-//Setting the channel name moves us into that channel, using the password set at that moment. The plugin takes
-//queued messages newest first, so send the name last and later, once the password has been applied.
-[{
-    ["serious_channelName",missionNamespace getVariable ["TFAR_Teamspeak_Channel_Name","TaskForceRadio"]] call TFAR_fnc_setPluginSetting;//#TODO wiki entry
-}, [], 0.1] call CBA_fnc_waitAndExecute;
+//Setting the channel name moves us into that channel, using the password set at that moment: sent last and later,
+//merged with the sends of the name and password CBA settings at mission start (one move request)
+call TFAR_fnc_sendSeriousChannelName;
 
 //If you add things that player could change in Mission call this PFH or tell players in WIKI

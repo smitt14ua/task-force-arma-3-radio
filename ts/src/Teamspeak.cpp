@@ -306,6 +306,19 @@ void Teamspeak::moveToSeriousChannel(TSServerID serverConnectionHandlerID) {
     const auto currentChannel = getChannelOfClient(serverConnectionHandlerID, getMyId(serverConnectionHandlerID));
     if (!currentChannel || currentChannel == seriousChannelID) //Unknown current channel: couldn't move back later
         return;
+    {
+        //Game start and the mod's channel name/password settings each ask for the move. Until the server confirms
+        //the first one we are still in the old channel, so a second request fails with "already member of channel".
+        static std::mutex moveLock;
+        static uint64 lastMoveTarget = 0;
+        static std::chrono::steady_clock::time_point lastMoveTime;
+        std::lock_guard lock(moveLock);
+        const auto now = std::chrono::steady_clock::now();
+        if (lastMoveTarget == seriousChannelID.baseType() && now - lastMoveTime < 2s)
+            return;
+        lastMoveTarget = seriousChannelID.baseType();
+        lastMoveTime = now;
+    }
     getServerData(serverConnectionHandlerID)->setMyOriginalChannel(currentChannel);
     auto seriousChannelPassword = TFAR::config.get<std::string>(Setting::serious_channelPassword);
     DWORD error;

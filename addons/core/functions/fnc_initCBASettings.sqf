@@ -303,7 +303,7 @@
     localize ELSTRING(settings,global),
     "TaskForceRadio",
     1,
-    {["serious_channelName", _this] call TFAR_fnc_setPluginSetting;}
+    {call TFAR_fnc_sendSeriousChannelName;}
 ] call CBA_Settings_fnc_init;
 [
     "TFAR_Teamspeak_Channel_Password",
@@ -314,11 +314,8 @@
     1,
     {
         ["serious_channelPassword", _this] call TFAR_fnc_setPluginSetting;
-        //Re-send the name afterwards so the plugin moves with the new password. Not in the same frame:
-        //the plugin takes queued messages newest first, it would apply the name before the password.
-        [{
-            ["serious_channelName", missionNamespace getVariable ["TFAR_Teamspeak_Channel_Name", "TaskForceRadio"]] call TFAR_fnc_setPluginSetting;
-        }, [], 0.1] call CBA_fnc_waitAndExecute;
+        //Re-send the name afterwards so the plugin moves with the new password (sent 0.1 s later)
+        call TFAR_fnc_sendSeriousChannelName;
     }
 ] call CBA_Settings_fnc_init;
 [
