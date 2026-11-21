@@ -19,6 +19,9 @@
 */
 if (!isMultiplayer) exitWith {private _msg = localize LSTRING(WM_Singleplayer);systemChat _msg;hint _msg;false};
 
+//Arma still reports a modifier released a moment ago (Ctrl+Caps let go, then Caps): that is the SW key, see
+//TFAR_fnc_onTangentPressedHack
+if ("LRTransmit" call TFAR_fnc_keybindModifiersReleased) exitWith {false};
 if (time - TF_last_lr_tangent_press < 0.1) exitWith {TF_last_lr_tangent_press = time;false};
 TF_last_lr_tangent_press = time;
 //The speak volume modifier already pressed the plugin's tangent for direct speech

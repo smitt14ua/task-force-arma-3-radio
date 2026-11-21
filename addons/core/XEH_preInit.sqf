@@ -96,6 +96,10 @@ if (hasInterface) then {//Clientside Variables
     TF_vertical_tab = toString [0xB];
 
     TF_last_lr_tangent_press = 0.0;
+    //Keys held down (scancode -> time of the first KeyDown) and keys released (scancode -> diag_tickTime), see
+    //TFAR_fnc_trackTangentKeys
+    GVAR(keysHeld) = createHashMap;
+    GVAR(keysReleased) = createHashMap;
 
     TF_HintFnc = nil;
 

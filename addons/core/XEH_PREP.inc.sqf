@@ -36,6 +36,9 @@ PREP_SUB(events\keys,processSWChannelKeys);
 PREP_SUB(events\keys,processSWCycleKeys);
 PREP_SUB(events\keys,processSWStereoKeys);
 PREP_SUB(events\keys,startTangentTransmission);
+PREP_SUB(events\keys,trackTangentKeys);
+PREP_SUB(events\keys,isModifierReleased);
+PREP_SUB(events\keys,keybindModifiersReleased);
 
 PREP_SUB(events\ui,onSwDialogOpen);
 PREP_SUB(events\ui,onLRDialogOpen);

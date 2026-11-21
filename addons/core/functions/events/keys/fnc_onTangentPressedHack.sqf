@@ -21,7 +21,12 @@
 params ["","_scancode","_shift","_ctrl","_alt"];
 
 private _matchbox = [];
-private _modifiers = [_shift,_ctrl,_alt];
+//Arma's flag can stay set after the modifier was released (TFAR_fnc_trackTangentKeys)
+private _modifiers = [
+    _shift && {!(0 call TFAR_fnc_isModifierReleased)},
+    _ctrl && {!(1 call TFAR_fnc_isModifierReleased)},
+    _alt && {!(2 call TFAR_fnc_isModifierReleased)}
+];
 
 private _fnc_matchModifiers = {
   params ["_targetScancode", "_targetMods"];
