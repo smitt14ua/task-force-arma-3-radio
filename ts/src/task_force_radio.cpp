@@ -53,6 +53,10 @@ TFAR::TFAR() {
         Logger::log(LoggerTypes::profiler, "On Respawn", LogLevel_DEVEL);
         if (!Teamspeak::isConnected())
             return;
+        //Config from the previous mission (maybe another channel or password): the game sends it again right away,
+        //and setting the channel name moves us then. Moving now too gave a second move ("already member of channel").
+        if (TFAR::config.needsRefresh())
+            return;
 
         Teamspeak::moveToSeriousChannel();
     });
@@ -90,12 +94,8 @@ TFAR::TFAR() {
         debugUI.stop();
     });
     config.configValueSet.connect([this](const Setting& setting) {
-        static std::chrono::system_clock::time_point lastMove;
-        if (setting == Setting::serious_channelName
-            && std::chrono::system_clock::now() - lastMove > 10ms) { //Teamspeak needs a little time to update currentChannel. This prevents doublejoin
-            Teamspeak::moveToSeriousChannel();
-            lastMove = std::chrono::system_clock::now();
-        }
+        if (setting == Setting::serious_channelName)
+            Teamspeak::moveToSeriousChannel(); //repeated requests are skipped there
         checkIfSeriousModeEnabled(Teamspeak::getCurrentServerConnection());
 
         if (setting == Setting::minimumPluginVersion) {

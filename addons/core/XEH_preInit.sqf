@@ -96,10 +96,10 @@ if (hasInterface) then {//Clientside Variables
     TF_vertical_tab = toString [0xB];
 
     TF_last_lr_tangent_press = 0.0;
-    //Keys held down (scancode -> time of the first KeyDown) and keys released (scancode -> diag_tickTime), see
-    //TFAR_fnc_trackTangentKeys
-    GVAR(keysHeld) = createHashMap;
-    GVAR(keysReleased) = createHashMap;
+    //Modifier key scancode -> -1 while held, diag_tickTime when released; main key of the LR chord being held.
+    //See TFAR_fnc_trackTangentKeys
+    GVAR(modifierKeys) = createHashMap;
+    GVAR(lrChordKey) = -1;
 
     TF_HintFnc = nil;
 

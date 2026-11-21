@@ -21,7 +21,7 @@
 if (!isMultiplayer) exitWith {private _msg = localize LSTRING(WM_Singleplayer);systemChat _msg;hint _msg; false};
 
 //Arma still reports a modifier released a moment ago, see TFAR_fnc_onLRTangentPressed
-if ("LRTransmitAdditional" call TFAR_fnc_keybindModifiersReleased) exitWith {false};
+if (["LRTransmitAdditional", if (_this isEqualType []) then {_this param [1, -1, [0]]} else {-1}] call TFAR_fnc_keybindModifiersReleased) exitWith {false};
 //The speak volume modifier already pressed the plugin's tangent for direct speech
 if (!isNil QGVAR(speakVolumeForcedSpeechTime)) exitWith {false};
 if ((TF_tangent_lr_pressed or TF_tangent_sw_pressed) or {!alive TFAR_currentUnit} or {!call TFAR_fnc_haveLRRadio}) exitWith {false};

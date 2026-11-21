@@ -19,11 +19,14 @@
 */
 if (!isMultiplayer) exitWith {private _msg = localize LSTRING(WM_Singleplayer);systemChat _msg;hint _msg;false};
 
+//Key event arguments [display, scancode, shift, ctrl, alt] when called from a key handler
+private _scancode = if (_this isEqualType []) then {_this param [1, -1, [0]]} else {-1};
 //Arma still reports a modifier released a moment ago (Ctrl+Caps let go, then Caps): that is the SW key, see
 //TFAR_fnc_onTangentPressedHack
-if ("LRTransmit" call TFAR_fnc_keybindModifiersReleased) exitWith {false};
+if (["LRTransmit", _scancode] call TFAR_fnc_keybindModifiersReleased) exitWith {false};
 if (time - TF_last_lr_tangent_press < 0.1) exitWith {TF_last_lr_tangent_press = time;false};
 TF_last_lr_tangent_press = time;
+GVAR(lrChordKey) = _scancode; //its release ends the SW block (TFAR_fnc_trackTangentKeys)
 //The speak volume modifier already pressed the plugin's tangent for direct speech
 if (!isNil QGVAR(speakVolumeForcedSpeechTime)) exitWith {false};
 if ((TF_tangent_lr_pressed or TF_tangent_sw_pressed) or {!alive TFAR_currentUnit} or {!call TFAR_fnc_haveLRRadio}) exitWith {false};

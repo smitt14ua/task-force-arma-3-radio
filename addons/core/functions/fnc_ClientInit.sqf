@@ -43,12 +43,13 @@ TF_respawnedAt = time;//first spawn so.. respawned now
 
 [   {!(isNull (findDisplay 46))},
     {
-        //First, so the tangent handlers below see this key event
-        (findDisplay 46) displayAddEventHandler ["KeyDown", "[true, _this] call TFAR_fnc_trackTangentKeys"];
-        (findDisplay 46) displayAddEventHandler ["KeyUp", "[false, _this] call TFAR_fnc_trackTangentKeys"];
         (findDisplay 46) displayAddEventHandler ["KeyUp", "_this call TFAR_fnc_onSwTangentReleasedHack"];
         (findDisplay 46) displayAddEventHandler ["KeyDown", "_this call TFAR_fnc_onTangentPressedHack"];
         (findDisplay 46) displayAddEventHandler ["KeyUp", "_this call TFAR_fnc_onLRTangentReleasedHack"];
+        //Display EHs run from last to first added: added last, so the handlers above and CBA's keybinds see the
+        //key state with this event already applied
+        (findDisplay 46) displayAddEventHandler ["KeyDown", "[true, _this] call TFAR_fnc_trackTangentKeys"];
+        (findDisplay 46) displayAddEventHandler ["KeyUp", "[false, _this] call TFAR_fnc_trackTangentKeys"];
 
         if (isMultiplayer) then {
             call TFAR_fnc_pluginNextDataFrame; //tell plugin that we are ingame

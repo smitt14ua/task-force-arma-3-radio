@@ -306,25 +306,25 @@ void Teamspeak::moveToSeriousChannel(TSServerID serverConnectionHandlerID) {
     const auto currentChannel = getChannelOfClient(serverConnectionHandlerID, getMyId(serverConnectionHandlerID));
     if (!currentChannel || currentChannel == seriousChannelID) //Unknown current channel: couldn't move back later
         return;
-    {
-        //Game start and the mod's channel name/password settings each ask for the move. Until the server confirms
-        //the first one we are still in the old channel, so a second request fails with "already member of channel".
-        static std::mutex moveLock;
-        static uint64 lastMoveTarget = 0;
-        static std::chrono::steady_clock::time_point lastMoveTime;
-        std::lock_guard lock(moveLock);
-        const auto now = std::chrono::steady_clock::now();
-        if (lastMoveTarget == seriousChannelID.baseType() && now - lastMoveTime < 2s)
-            return;
-        lastMoveTarget = seriousChannelID.baseType();
-        lastMoveTime = now;
-    }
-    getServerData(serverConnectionHandlerID)->setMyOriginalChannel(currentChannel);
     auto seriousChannelPassword = TFAR::config.get<std::string>(Setting::serious_channelPassword);
+    //Until the server confirms a move we are still in the old channel: the same request again (the mod sending the
+    //channel name twice) fails with "already member of channel". A new password is a new attempt.
+    static std::mutex moveLock;
+    std::lock_guard lock(moveLock);
+    static std::tuple<uint64, uint64, std::string> lastMove;
+    static std::chrono::steady_clock::time_point lastMoveTime;
+    const auto now = std::chrono::steady_clock::now();
+    const auto thisMove = std::make_tuple(serverConnectionHandlerID.baseType(), seriousChannelID.baseType(), seriousChannelPassword);
+    if (thisMove == lastMove && now - lastMoveTime < 2s)
+        return;
+    getServerData(serverConnectionHandlerID)->setMyOriginalChannel(currentChannel);
     DWORD error;
     if ((error = ts3Functions.requestClientMove(serverConnectionHandlerID.baseType(), getMyId(serverConnectionHandlerID).baseType(), seriousChannelID.baseType(), seriousChannelPassword.c_str(), nullptr)) != ERROR_ok) {
         log("Can't join channel", error);
+        return;
     }
+    lastMove = thisMove;
+    lastMoveTime = now;
 }
 
 void Teamspeak::moveFromSeriousChannel(TSServerID serverConnectionHandlerID) {

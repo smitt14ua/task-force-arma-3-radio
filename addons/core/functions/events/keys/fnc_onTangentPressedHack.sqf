@@ -21,17 +21,20 @@
 params ["","_scancode","_shift","_ctrl","_alt"];
 
 private _matchbox = [];
-//Arma's flag can stay set after the modifier was released (TFAR_fnc_trackTangentKeys)
-private _modifiers = [
-    _shift && {!(0 call TFAR_fnc_isModifierReleased)},
-    _ctrl && {!(1 call TFAR_fnc_isModifierReleased)},
-    _alt && {!(2 call TFAR_fnc_isModifierReleased)}
-];
+private _modifiers = [];
 
 private _fnc_matchModifiers = {
   params ["_targetScancode", "_targetMods"];
 
   if !(_scancode isEqualTo _targetScancode) exitWith {false};
+      //Only for tangent keys: Arma's flag can stay set after the modifier was released (TFAR_fnc_trackTangentKeys)
+      if (_modifiers isEqualTo []) then {
+          _modifiers = [
+              _shift && {!(0 call TFAR_fnc_isModifierReleased)},
+              _ctrl && {!(1 call TFAR_fnc_isModifierReleased)},
+              _alt && {!(2 call TFAR_fnc_isModifierReleased)}
+          ];
+      };
       private _modsMatch = 0;
       {
           if (!_x || _modifiers select _forEachIndex) then {_modsMatch = _modsMatch + 1;}

@@ -4,9 +4,10 @@
   Name: TFAR_fnc_trackTangentKeys
 
   Author: Smith
-    Remembers which keys are physically held, from the display's KeyDown/KeyUp events. Arma's own modifier flags can
-    stay set after the modifier was released: let go of Ctrl and Caps together and the next Caps press still arrives
-    with ctrl, so a Ctrl+Caps (LR) tangent fires instead of the Caps (SW) one.
+    Key tracking for the tangent keybinds, from the main display's KeyDown/KeyUp events.
+    - Modifiers: Arma's flags can stay set after the modifier was released (let go of Ctrl and Caps together and the
+      next Caps press still arrives with ctrl, firing the Ctrl+Caps LR tangent), see TFAR_fnc_isModifierReleased.
+    - Releasing the main key of the LR chord ends the 0.5 s SW block of TFAR_fnc_onSwTangentPressed.
 
   Arguments:
     0: Pressed (KeyDown) <BOOL>
@@ -24,12 +25,14 @@
 params ["_pressed", "_args"];
 private _scancode = _args select 1;
 
-if (_pressed) then {
-    //Keep the time of the first KeyDown, the key repeats while held
-    if !(_scancode in GVAR(keysHeld)) then {GVAR(keysHeld) set [_scancode, time]};
-} else {
-    GVAR(keysHeld) deleteAt _scancode;
-    GVAR(keysReleased) set [_scancode, diag_tickTime];
+if (_scancode in [42, 54, 29, 157, 56, 184]) exitWith { //left and right Shift, Ctrl, Alt
+    GVAR(modifierKeys) set [_scancode, [diag_tickTime, -1] select _pressed];
+    false
+};
+
+if (!_pressed && {_scancode == GVAR(lrChordKey)}) then {
+    GVAR(lrChordKey) = -1;
+    TF_last_lr_tangent_press = -1;
 };
 
 false
