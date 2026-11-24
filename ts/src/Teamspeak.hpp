@@ -34,6 +34,9 @@ public:
     //or at game end, and leave voices unprocessed. Read by the audio thread.
     //Cleared when we are back in it, on game start and when the channel name or password changes.
     std::atomic<bool> leftSeriousChannel{ false };
+    //moveFromSeriousChannel requested a move out: that move isn't the player leaving (the game may be back already
+    //when it arrives, after a pipe timeout)
+    std::atomic<bool> movingOutOfSeriousChannel{ false };
 
     //Returns false if a rename to this nickname was already requested less than renameRetryInterval ago, else records the request
     bool shouldRequestRename(const std::string& nickname);
@@ -72,6 +75,8 @@ public:
     static void unmuteAll(TSServerID serverConnectionHandlerID = Teamspeak::getCurrentServerConnection());
     static void setClientMute(TSServerID serverConnectionHandlerID, TSClientID clientID, bool mute);
     static void setClientMute(TSServerID serverConnectionHandlerID, std::vector<TSClientID> clientIds, bool mute);
+    //Mutes again the clients we muted that the user unmuted by hand in TS
+    static void reapplyMutes(TSServerID serverConnectionHandlerID = getCurrentServerConnection());
     static void moveToSeriousChannel(TSServerID serverConnectionHandlerID = getCurrentServerConnection());
     static void moveFromSeriousChannel(TSServerID serverConnectionHandlerID = getCurrentServerConnection());
     //Whether we left the serious channel during the game, see TeamspeakServerData::leftSeriousChannel

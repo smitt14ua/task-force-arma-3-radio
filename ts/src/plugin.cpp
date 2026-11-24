@@ -153,6 +153,7 @@ void ServiceThread() {
                 }
                 if (allowedToMove && !Teamspeak::hasLeftSeriousChannel()) //Left it on purpose during the game: stay out
                     Teamspeak::moveToSeriousChannel();
+                Teamspeak::reapplyMutes();
             }
                 
             lastCheckForExpire = std::chrono::steady_clock::now();

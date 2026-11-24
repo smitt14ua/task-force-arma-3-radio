@@ -213,6 +213,7 @@ void Teamspeak::unmuteAll(TSServerID serverConnectionHandlerID) {
 #else
     const auto serverDataDir = findServerData(serverConnectionHandlerID);
     auto mutedClients = serverDataDir ? serverDataDir->getMutedClients() : std::vector<dataType::TSClientID>();
+    if (mutedClients.empty()) return; //Nobody muted, don't send an empty request
     mutedClients.emplace_back(0);//Null-terminate so we can send it to requestUnmuteClients
     ids = reinterpret_cast<anyID*>(mutedClients.data());
 #endif
@@ -235,16 +236,11 @@ void Teamspeak::setClientMute(TSServerID serverConnectionHandlerID, TSClientID c
 
     const auto serverDataDir = getServerData(serverConnectionHandlerID);
     auto isAlreadyMuted = serverDataDir->getClientMuteStatus(clientID);
-    DWORD error;
-    if (isAlreadyMuted == mute) {
-        //Muted by us, but the user may have unmuted him by hand in TS: mute again (local query, no server traffic)
-        int mutedInTS = 1;
-        if (!mute || ts3Functions.getClientVariableAsInt(serverConnectionHandlerID.baseType(), clientID.baseType(), CLIENT_IS_MUTED, &mutedInTS) != ERROR_ok || mutedInTS)
-            return; //Client already in state
-    }
+    if (isAlreadyMuted == mute) return; //Client already in state (hand unmutes: see reapplyMutes)
 
     serverDataDir->setClientMuteStatus(clientID, mute);
 
+    DWORD error;
     if (mute) {
         if ((error = ts3Functions.requestMuteClients(serverConnectionHandlerID.baseType(), clientIds, nullptr)) != ERROR_ok) {
             log("Can't mute client", error);
@@ -254,6 +250,24 @@ void Teamspeak::setClientMute(TSServerID serverConnectionHandlerID, TSClientID c
             log("Can't unmute client", error);
         }
     }
+}
+
+void Teamspeak::reapplyMutes(TSServerID serverConnectionHandlerID) {
+    const auto serverDataDir = findServerData(serverConnectionHandlerID);
+    if (!serverDataDir) return;
+    //The user may have unmuted someone we muted by hand in TS. Mute requests only change state when it changes,
+    //so without this he stayed audible (also players not in the game, who send no positions)
+    std::vector<anyID> unmutedByHand;
+    for (const auto& clientID : serverDataDir->getMutedClients()) {
+        int mutedInTS = 1;
+        if (ts3Functions.getClientVariableAsInt(serverConnectionHandlerID.baseType(), clientID.baseType(), CLIENT_IS_MUTED, &mutedInTS) == ERROR_ok && !mutedInTS)
+            unmutedByHand.emplace_back(clientID.baseType());
+    }
+    if (unmutedByHand.empty()) return;
+    unmutedByHand.emplace_back(0); //terminating null for teamspeak API
+    DWORD error;
+    if ((error = ts3Functions.requestMuteClients(serverConnectionHandlerID.baseType(), unmutedByHand.data(), nullptr)) != ERROR_ok)
+        log("Can't mute clients again", error);
 }
 
 void Teamspeak::setClientMute(TSServerID serverConnectionHandlerID, std::vector<TSClientID> clientIds, bool mute) {
@@ -339,7 +353,9 @@ void Teamspeak::moveFromSeriousChannel(TSServerID serverConnectionHandlerID) {
 
     if (getChannelOfClient(serverConnectionHandlerID, getMyId(serverConnectionHandlerID)) == notSeriousChannelId) return;
     DWORD error;
+    serverDataDir->movingOutOfSeriousChannel = true;
     if ((error = ts3Functions.requestClientMove(serverConnectionHandlerID.baseType(), serverDataDir->getMyClientID().baseType(), notSeriousChannelId.baseType(), "", nullptr)) != ERROR_ok) {
+        serverDataDir->movingOutOfSeriousChannel = false;
         log("Can't join back channel", error);
     }
 
@@ -447,10 +463,15 @@ void Teamspeak::_onClientMoved(TSServerID serverConnectionHandlerID, TSClientID 
         //Left the serious channel during the game (admins leave it to talk): the periodic move must not pull us back
         if (const auto seriousChannelID = getSeriousChannelID(serverConnectionHandlerID); seriousChannelID) {
             const auto serverDataDir = getServerData(serverConnectionHandlerID);
-            if (newChannel == seriousChannelID)
+            if (newChannel == seriousChannelID) {
                 serverDataDir->leftSeriousChannel = false;
-            else if (oldChannel == seriousChannelID && TFAR::getInstance().getCurrentlyInGame())
-                serverDataDir->leftSeriousChannel = true;
+            } else if (oldChannel == seriousChannelID) {
+                const bool movedByPlugin = serverDataDir->movingOutOfSeriousChannel.exchange(false);
+                if (!movedByPlugin && TFAR::getInstance().getCurrentlyInGame()) {
+                    serverDataDir->leftSeriousChannel = true;
+                    unmuteAll(serverConnectionHandlerID); //Those we muted there stayed muted (icon, whispers) while we are away
+                }
+            }
         }
         _onChannelSwitchedEvent(serverConnectionHandlerID, newChannel);
         return;
