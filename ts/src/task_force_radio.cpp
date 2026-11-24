@@ -53,6 +53,7 @@ TFAR::TFAR() {
         Logger::log(LoggerTypes::profiler, "On Respawn", LogLevel_DEVEL);
         if (!Teamspeak::isConnected())
             return;
+        Teamspeak::clearLeftSeriousChannel(); //New game: move us in again even if we left the channel in the last one
         //Config from the previous mission (maybe another channel or password): the game sends it again right away,
         //and setting the channel name moves us then. Moving now too gave a second move ("already member of channel").
         if (TFAR::config.needsRefresh())
@@ -94,8 +95,18 @@ TFAR::TFAR() {
         debugUI.stop();
     });
     config.configValueSet.connect([this](const Setting& setting) {
-        if (setting == Setting::serious_channelName)
-            Teamspeak::moveToSeriousChannel(); //repeated requests are skipped there
+        if (setting == Setting::serious_channelName) {
+            //The game sends the name (after the password) at every config send. Only a new channel or password
+            //overrides having left the channel on purpose.
+            static std::pair<std::string, std::string> lastChannel;
+            std::pair<std::string, std::string> channel{ config.get<std::string>(Setting::serious_channelName), config.get<std::string>(Setting::serious_channelPassword) };
+            if (channel != lastChannel) {
+                lastChannel = std::move(channel);
+                Teamspeak::clearLeftSeriousChannel();
+            }
+            if (!Teamspeak::hasLeftSeriousChannel())
+                Teamspeak::moveToSeriousChannel(); //repeated requests are skipped there
+        }
         checkIfSeriousModeEnabled(Teamspeak::getCurrentServerConnection());
 
         if (setting == Setting::minimumPluginVersion) {
@@ -186,6 +197,7 @@ void TFAR::checkIfSeriousModeEnabled(TSServerID serverID) {
     std::string serious_mod_channel_name = TFAR::config.get<std::string>(Setting::serious_channelName);
     bool isSerious = false;
     if (!serious_mod_channel_name.empty() && Teamspeak::isInChannel(serverID, Teamspeak::getMyId(serverID), serious_mod_channel_name)) isSerious = true;
+    outsideSeriousChannel = !serious_mod_channel_name.empty() && !isSerious;
     if (isSeriousMode != isSerious) {
         isSeriousMode = isSerious;
         onSeriousModeChanged(isSerious);

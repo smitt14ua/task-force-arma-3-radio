@@ -235,11 +235,16 @@ void Teamspeak::setClientMute(TSServerID serverConnectionHandlerID, TSClientID c
 
     const auto serverDataDir = getServerData(serverConnectionHandlerID);
     auto isAlreadyMuted = serverDataDir->getClientMuteStatus(clientID);
-    if (isAlreadyMuted == mute) return; //Client already in state
+    DWORD error;
+    if (isAlreadyMuted == mute) {
+        //Muted by us, but the user may have unmuted him by hand in TS: mute again (local query, no server traffic)
+        int mutedInTS = 1;
+        if (!mute || ts3Functions.getClientVariableAsInt(serverConnectionHandlerID.baseType(), clientID.baseType(), CLIENT_IS_MUTED, &mutedInTS) != ERROR_ok || mutedInTS)
+            return; //Client already in state
+    }
 
     serverDataDir->setClientMuteStatus(clientID, mute);
 
-    DWORD error;
     if (mute) {
         if ((error = ts3Functions.requestMuteClients(serverConnectionHandlerID.baseType(), clientIds, nullptr)) != ERROR_ok) {
             log("Can't mute client", error);
@@ -294,13 +299,7 @@ void Teamspeak::moveToSeriousChannel(TSServerID serverConnectionHandlerID) {
         std::transform(className.begin(), className.end(), className.begin(), ::tolower);
         if (className.find(L"arma") == std::string::npos) return; //No switch when no Arma
     }
-    auto seriousChannelName = TFAR::config.get<std::string>(Setting::serious_channelName);
-
-    auto seriousChannelID = 
-        helpers::startsWith("ID:", seriousChannelName) ? 
-        helpers::parseArmaNumberToInt(seriousChannelName.substr(3)) :
-        findChannelByName(serverConnectionHandlerID, TFAR::config.get<std::string>(Setting::serious_channelName));
-
+    const auto seriousChannelID = getSeriousChannelID(serverConnectionHandlerID);
     if (!seriousChannelID) //Channel not found
         return;
     const auto currentChannel = getChannelOfClient(serverConnectionHandlerID, getMyId(serverConnectionHandlerID));
@@ -441,6 +440,14 @@ void Teamspeak::_onChannelSwitchedEvent(TSServerID serverConnectionHandlerID, TS
 
 void Teamspeak::_onClientMoved(TSServerID serverConnectionHandlerID, TSClientID clientID, TSChannelID oldChannel, TSChannelID newChannel) {
     if (clientID == getMyId(serverConnectionHandlerID)) {// we switched channel
+        //Left the serious channel during the game (admins leave it to talk): the periodic move must not pull us back
+        if (const auto seriousChannelID = getSeriousChannelID(serverConnectionHandlerID); seriousChannelID) {
+            const auto serverDataDir = getServerData(serverConnectionHandlerID);
+            if (newChannel == seriousChannelID)
+                serverDataDir->leftSeriousChannel = false;
+            else if (oldChannel == seriousChannelID && TFAR::getInstance().getCurrentlyInGame())
+                serverDataDir->leftSeriousChannel = true;
+        }
         _onChannelSwitchedEvent(serverConnectionHandlerID, newChannel);
         return;
     }
@@ -751,6 +758,26 @@ TSChannelID Teamspeak::findChannelByName(TSServerID serverConnectionHandlerID, c
         return -1;
     const auto serverDataDir = findServerData(serverConnectionHandlerID);
     return serverDataDir ? serverDataDir->getChannelIDFromName(channelName) : TSChannelID(-1);
+}
+
+TSChannelID Teamspeak::getSeriousChannelID(TSServerID serverConnectionHandlerID) {
+    const auto seriousChannelName = TFAR::config.get<std::string>(Setting::serious_channelName);
+    if (seriousChannelName.empty())
+        return 0;
+    if (helpers::startsWith("ID:", seriousChannelName))
+        return helpers::parseArmaNumberToInt(seriousChannelName.substr(3));
+    const auto found = findChannelByName(serverConnectionHandlerID, seriousChannelName);
+    return found == TSChannelID(-1) ? TSChannelID(0) : found; //-1 is "not found"
+}
+
+bool Teamspeak::hasLeftSeriousChannel(TSServerID serverConnectionHandlerID) {
+    const auto serverDataDir = findServerData(serverConnectionHandlerID);
+    return serverDataDir && serverDataDir->leftSeriousChannel;
+}
+
+void Teamspeak::clearLeftSeriousChannel(TSServerID serverConnectionHandlerID) {
+    if (const auto serverDataDir = findServerData(serverConnectionHandlerID))
+        serverDataDir->leftSeriousChannel = false;
 }
 
 std::string Teamspeak::getMetaData(TSServerID serverConnectionHandlerID, TSClientID clientId) {

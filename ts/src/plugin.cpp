@@ -151,8 +151,8 @@ void ServiceThread() {
                         allowedToMove = !clientDir->myClientData->isSpectating;
                     }
                 }
-                if (allowedToMove)
-                    Teamspeak::moveToSeriousChannel();//#TODO people may want to leave SeriousChannel on purpose and not be moved back
+                if (allowedToMove && !Teamspeak::hasLeftSeriousChannel()) //Left it on purpose during the game: stay out
+                    Teamspeak::moveToSeriousChannel();
             }
                 
             lastCheckForExpire = std::chrono::steady_clock::now();
@@ -488,6 +488,10 @@ void ts3plugin_onEditMixedPlaybackVoiceDataEvent(uint64 serverConnectionHandlerI
 
 void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID, short* samples, int sampleCount, int channels, bool isFromMicrophone = false) {
     if (!TFAR::getInstance().getCurrentlyInGame())
+        return;
+    //Outside the serious channel voices stay as they are: plain TS (players' positions, spectator rules and radios
+    //belong to the serious channel). Before, far or dead players in another channel couldn't hear each other.
+    if (TFAR::getInstance().isOutsideSeriousChannel())
         return;
     ProfileFunction;
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
@@ -855,6 +859,9 @@ void ts3plugin_onEditPostProcessVoiceDataEvent(uint64 serverConnectionHandlerID,
 //Data from our microphone before its sent
 void ts3plugin_onEditCapturedVoiceDataEvent(uint64 serverConnectionHandlerID, short* samples, int sampleCount, int channels, int* edited) {
     if (!TFAR::getInstance().getCurrentlyInGame() || !(*edited & 2))
+        return;
+    //processVoiceData leaves our voice unprocessed there, playing it back would echo it to ourselves
+    if (TFAR::getInstance().isOutsideSeriousChannel())
         return;
 
     ProfileFunction;

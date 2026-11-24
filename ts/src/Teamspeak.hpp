@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <memory>
 #include <shared_mutex>
+#include <atomic>
 #include <chrono>
 #include <vector>
 
@@ -29,6 +30,9 @@ public:
     dataType::TSChannelID getMyOriginalChannel();
     void setMyOriginalChannel(dataType::TSChannelID val);
     TSChannelID myLastKnownChannel{ -1 };//Only called via Teamspeak Events. So not multi-threaded
+    //We left the serious channel during the game (ourselves or moved by someone): don't move us back periodically.
+    //Cleared when we are back in it, on game start and when the channel name or password changes.
+    std::atomic<bool> leftSeriousChannel{ false };
 
     //Returns false if a rename to this nickname was already requested less than renameRetryInterval ago, else records the request
     bool shouldRequestRename(const std::string& nickname);
@@ -69,6 +73,9 @@ public:
     static void setClientMute(TSServerID serverConnectionHandlerID, std::vector<TSClientID> clientIds, bool mute);
     static void moveToSeriousChannel(TSServerID serverConnectionHandlerID = getCurrentServerConnection());
     static void moveFromSeriousChannel(TSServerID serverConnectionHandlerID = getCurrentServerConnection());
+    //Whether we left the serious channel during the game, see TeamspeakServerData::leftSeriousChannel
+    static bool hasLeftSeriousChannel(TSServerID serverConnectionHandlerID = getCurrentServerConnection());
+    static void clearLeftSeriousChannel(TSServerID serverConnectionHandlerID = getCurrentServerConnection());
     static bool setMyNicknameToGameName(TSServerID serverConnectionHandlerID, const std::string& nickname);
     static void resetMyNickname(TSServerID serverConnectionHandlerID = getCurrentServerConnection());
 
@@ -85,6 +92,8 @@ public:
     static std::string getMyNickname(TSServerID serverConnectionHandlerID);
 
     static TSChannelID findChannelByName(TSServerID serverConnectionHandlerID, const std::string& channelName);
+    //Channel set by serious_channelName (name or "ID:<id>"), 0 if not set or not found
+    static TSChannelID getSeriousChannelID(TSServerID serverConnectionHandlerID);
 
     static std::string getMetaData(TSServerID serverConnectionHandlerID, TSClientID clientId);
     static void setMyMetaData(const std::string & metaData);
