@@ -30,7 +30,8 @@ public:
     dataType::TSChannelID getMyOriginalChannel();
     void setMyOriginalChannel(dataType::TSChannelID val);
     TSChannelID myLastKnownChannel{ -1 };//Only called via Teamspeak Events. So not multi-threaded
-    //We left the serious channel during the game (ourselves or moved by someone): don't move us back periodically.
+    //We left the serious channel during the game (ourselves or moved by someone): don't move us back periodically
+    //or at game end, and leave voices unprocessed. Read by the audio thread.
     //Cleared when we are back in it, on game start and when the channel name or password changes.
     std::atomic<bool> leftSeriousChannel{ false };
 

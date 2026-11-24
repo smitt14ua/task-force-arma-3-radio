@@ -331,6 +331,10 @@ void Teamspeak::moveFromSeriousChannel(TSServerID serverConnectionHandlerID) {
     auto notSeriousChannelId = serverDataDir->getMyOriginalChannel();
     if (!notSeriousChannelId)
         return;
+    if (serverDataDir->leftSeriousChannel) { //Already went elsewhere himself, e.g. an admin channel: stay there
+        serverDataDir->setMyOriginalChannel(-1);
+        return;
+    }
 
 
     if (getChannelOfClient(serverConnectionHandlerID, getMyId(serverConnectionHandlerID)) == notSeriousChannelId) return;

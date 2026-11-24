@@ -489,10 +489,6 @@ void ts3plugin_onEditMixedPlaybackVoiceDataEvent(uint64 serverConnectionHandlerI
 void processVoiceData(TSServerID serverConnectionHandlerID, TSClientID clientID, short* samples, int sampleCount, int channels, bool isFromMicrophone = false) {
     if (!TFAR::getInstance().getCurrentlyInGame())
         return;
-    //Outside the serious channel voices stay as they are: plain TS (players' positions, spectator rules and radios
-    //belong to the serious channel). Before, far or dead players in another channel couldn't hear each other.
-    if (TFAR::getInstance().isOutsideSeriousChannel())
-        return;
     ProfileFunction;
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
     _mm_setcsr((_mm_getcsr() & ~0x0040) | (0x0040));//_MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
@@ -817,6 +813,10 @@ void ts3plugin_onEditPostProcessVoiceDataEvent(uint64 serverConnectionHandlerID,
 
     if (!TFAR::getInstance().getCurrentlyInGame())
         return;
+    //Left the serious channel during the game (admins, spectators talking in their own channel): plain TS there.
+    //Positions, spectator rules and radios belong to the serious channel, far or dead players couldn't hear each other.
+    if (Teamspeak::hasLeftSeriousChannel(serverConnectionHandlerID))
+        return;
 
     ProfileFunction;
 
@@ -860,8 +860,7 @@ void ts3plugin_onEditPostProcessVoiceDataEvent(uint64 serverConnectionHandlerID,
 void ts3plugin_onEditCapturedVoiceDataEvent(uint64 serverConnectionHandlerID, short* samples, int sampleCount, int channels, int* edited) {
     if (!TFAR::getInstance().getCurrentlyInGame() || !(*edited & 2))
         return;
-    //processVoiceData leaves our voice unprocessed there, playing it back would echo it to ourselves
-    if (TFAR::getInstance().isOutsideSeriousChannel())
+    if (Teamspeak::hasLeftSeriousChannel(serverConnectionHandlerID)) //No radios there, see onEditPostProcessVoiceDataEvent
         return;
 
     ProfileFunction;

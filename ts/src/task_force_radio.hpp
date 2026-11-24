@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <string>
-#include <atomic>
 #include "settings.hpp"
 #include "SignalSlot.hpp"
 #include "serverData.hpp"
@@ -142,9 +141,6 @@ public:
     std::string getPluginID() const { return pluginID; }
     void setPluginID(const std::string& val) { pluginID = val; }
     bool getCurrentlyInGame() const { return currentlyInGame; }
-    //A serious channel is set and we are not in it: TFAR leaves voices alone there (plain TS, like admins talking
-    //in their own channel). Without a serious channel name TFAR works in any channel as before.
-    bool isOutsideSeriousChannel() const { return outsideSeriousChannel; }
     void setCurrentlyInGame(bool val) { currentlyInGame = val; }
 
     gameData m_gameData;
@@ -185,7 +181,6 @@ private:
     std::shared_ptr<AntennaManager> m_antennaManger;
     bool currentlyInGame{ false };
     bool isSeriousMode{ false };
-    std::atomic<bool> outsideSeriousChannel{ false };
 
 };
 

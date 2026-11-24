@@ -197,7 +197,6 @@ void TFAR::checkIfSeriousModeEnabled(TSServerID serverID) {
     std::string serious_mod_channel_name = TFAR::config.get<std::string>(Setting::serious_channelName);
     bool isSerious = false;
     if (!serious_mod_channel_name.empty() && Teamspeak::isInChannel(serverID, Teamspeak::getMyId(serverID), serious_mod_channel_name)) isSerious = true;
-    outsideSeriousChannel = !serious_mod_channel_name.empty() && !isSerious;
     if (isSeriousMode != isSerious) {
         isSeriousMode = isSerious;
         onSeriousModeChanged(isSerious);
